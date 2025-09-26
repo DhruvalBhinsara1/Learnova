@@ -128,7 +128,7 @@ export function Navbar() {
   // Navigation items with icons
   const navigationItems = [
     { href: "/", label: "Home", icon: Home },
-    { href: "/activity", label: "Activity", icon: Activity },
+    { href: "/activity", label: "Activities", icon: Activity },
     { href: "/about", label: "About", icon: Info },
     { href: "/contact", label: "Contact", icon: Mail },
   ];

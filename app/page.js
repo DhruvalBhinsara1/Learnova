@@ -309,7 +309,7 @@ export default function AboutPage() {
 
             <div className="flex flex-wrap justify-center items-center mb-8 text-center gap-x-6 gap-y-4">
               <SplitText
-                text="Transform"
+                text="Transforming"
                 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white text-balance"
                 delay={0.05}
                 duration={0.8}
