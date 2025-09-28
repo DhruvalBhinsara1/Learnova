@@ -1182,7 +1182,7 @@ const TeacherDashboard = () => {
       {/* Animated Gradient Backgrounds */}
       <div className="fixed inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/10 pointer-events-none animate-gradientMove" />
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(139,92,246,0.12)_0%,transparent_60%)] pointer-events-none" />
-      
+
       {/* Premium Heading Section */}
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
@@ -1268,7 +1268,7 @@ const TeacherDashboard = () => {
 
             {/* Bottom Action Bar */}
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-              <div className="flex items-center md:gap-3">
+              <div className="flex md:flex-row space-y-1 flex-col items-center md:gap-3">
                 <span className="text-sm text-gray-400">Quick Actions:</span>
                 {attendanceWindow && (
                   <button

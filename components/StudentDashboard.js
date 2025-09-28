@@ -300,7 +300,7 @@ const StudentDashboard = () => {
 
             {/* Bottom Action Bar */}
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
-              <div className="flex md:flex-row flex-col items-center md:gap-3">
+              <div className="flex md:flex-row space-y-1 flex-col items-center md:gap-3">
                 <span className="text-sm text-gray-400">Quick Actions:</span>
                 <button className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center md:gap-2">
                   <Download className="w-3 h-3" />

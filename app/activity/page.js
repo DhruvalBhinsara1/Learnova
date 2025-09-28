@@ -380,7 +380,7 @@ export default function ActivityPage() {
                 <h2 className="text-2xl md:text-4xl font-bold text-white mb-2">
                   Featured Activities
                 </h2>
-                <p className="text-gray-400">
+                <p className="text-gray-400 text-sm">
                   Trending games and quizzes this week
                 </p>
               </div>
