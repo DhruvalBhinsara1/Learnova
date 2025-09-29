@@ -725,7 +725,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         <div className="text-center py-12 space-y-6">
           <div className="space-y-4">
             <h1 className="text-5xl md:text-8xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent drop-shadow-2xl">
-              SecureAttend
+              Secure Attendance
             </h1>
             <div className="h-1 w-40 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full shadow-lg shadow-purple-500/50"></div>
           </div>
