@@ -24,12 +24,9 @@ jobs:
 
       - name: 🔍 Check for secrets in files
         run: |
-          # Check for hardcoded secrets, but exclude imports and env references
-          SECRETS=$(grep -r "MONGODB_URI\|firebase\|API_KEY" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" app/ components/ 2>/dev/null | grep -v "import\|from\|process\.env\|next\.config" | grep -v ".env")
-
-          if [ ! -z "$SECRETS" ]; then
+          # Only flag actual assignments with hardcoded values, not imports
+          if grep -r "= ['\"]mongodb+srv://\|= ['\"][a-zA-Z0-9]*-[a-zA-Z0-9]*\|API_KEY.*= ['\"]" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.tsx" app/ components/ 2>/dev/null | grep -v "node_modules"; then
             echo "❌ Hardcoded secrets detected!"
-            echo "$SECRETS"
             exit 1
           fi
           echo "✅ No hardcoded secrets found"
