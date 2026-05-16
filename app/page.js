@@ -1,6 +1,7 @@
 "use client";
 import { Navbar } from "@/components/Navbar";
 import { useMemo, useEffect, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 import SplitText from "@/components/ui-block/SplitText";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import {
@@ -161,6 +162,18 @@ const SectionBadge = ({
     <Icon className={`w-5 h-5 text-${textColor.split("-")[0]}-400 mr-2`} />
     <span className={`text-${textColor} font-medium`}>{text}</span>
   </div>
+);
+
+const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
+  <motion.div
+    className={className}
+    initial={{ opacity: 0, y }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, amount: 0.2 }}
+    transition={{ duration: 0.6, delay, ease: "easeOut" }}
+  >
+    {children}
+  </motion.div>
 );
 
 const ActionButton = ({
@@ -362,7 +375,7 @@ export default function AboutPage() {
         >
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <div className="space-y-8">
+              <Reveal className="space-y-8">
                 <SectionBadge icon={Sparkles} text="Our Mission" />
 
                 <h2 className="text-2xl md:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-accent bg-clip-text text-transparent">
@@ -396,9 +409,9 @@ export default function AboutPage() {
                   Learn More
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </ActionButton>
-              </div>
+              </Reveal>
 
-              <div className="relative">
+              <Reveal className="relative" delay={0.1}>
                 <div className="bg-gradient-to-br from-purple-500/10 via-accent/10 to-pink-500/10 rounded-3xl h-96 flex items-center justify-center border border-purple-500/20 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02] transition-all duration-700">
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
@@ -421,7 +434,7 @@ export default function AboutPage() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -434,7 +447,7 @@ export default function AboutPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-purple-900/5 to-black/40 backdrop-blur-3xl" />
 
           <div className="max-w-7xl mx-auto relative">
-            <div className="text-center mb-20">
+            <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={Heart}
                 text="Our Values"
@@ -450,31 +463,30 @@ export default function AboutPage() {
                 Our core values reflect what makes Learnova authentic and
                 trustworthy for schools, teachers, parents, and students.
               </p>
-            </div>
+            </Reveal>
 
             <div className="grid md:grid-cols-3 gap-8">
               {VALUES_DATA.map((value, index) => (
-                <Card
-                  key={index}
-                  className="group bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25"
-                >
-                  <CardHeader className="text-center pb-4">
-                    <div
-                      className={`mx-auto w-20 h-20 bg-gradient-to-br ${value.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
-                    >
-                      <value.icon className="h-10 w-10 text-white relative z-10" />
-                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    </div>
-                    <CardTitle className="text-white text-xl group-hover:text-accent transition-colors duration-500">
-                      {value.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
-                      {value.description}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
+                <Reveal key={value.title} delay={index * 0.08}>
+                  <Card className="group bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25">
+                    <CardHeader className="text-center pb-4">
+                      <div
+                        className={`mx-auto w-20 h-20 bg-gradient-to-br ${value.gradient} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
+                      >
+                        <value.icon className="h-10 w-10 text-white relative z-10" />
+                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      </div>
+                      <CardTitle className="text-white text-xl group-hover:text-accent transition-colors duration-500">
+                        {value.title}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CardDescription className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                        {value.description}
+                      </CardDescription>
+                    </CardContent>
+                  </Card>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -483,7 +495,7 @@ export default function AboutPage() {
         {/* Team Section */}
         <section id="team" className="py-20 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-20">
+            <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={Users}
                 text="Our Team"
@@ -499,41 +511,40 @@ export default function AboutPage() {
                 The passionate educators and technologists driving Learnova's
                 innovation and success.
               </p>
-            </div>
+            </Reveal>
 
             <div className="grid md:grid-cols-3 gap-8">
               {TEAM_MEMBERS.map((member, index) => (
-                <Card
-                  key={index}
-                  className="group bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]"
-                >
-                  <CardContent className="pt-8 text-center">
-                    <div className="relative mb-6">
-                      <div
-                        className={`w-28 h-28 bg-gradient-to-br ${member.color} rounded-full flex items-center justify-center mx-auto group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
-                      >
-                        <span className="text-3xl font-bold text-white relative z-10">
-                          {member.initials}
-                        </span>
-                        <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <Reveal key={member.name} delay={index * 0.08}>
+                  <Card className="group bg-black/40 border-white/10 backdrop-blur-xl hover:border-accent/50 transition-all duration-700 hover:scale-[1.02]">
+                    <CardContent className="pt-8 text-center">
+                      <div className="relative mb-6">
+                        <div
+                          className={`w-28 h-28 bg-gradient-to-br ${member.color} rounded-full flex items-center justify-center mx-auto group-hover:scale-105 transition-transform duration-500 relative overflow-hidden`}
+                        >
+                          <span className="text-3xl font-bold text-white relative z-10">
+                            {member.initials}
+                          </span>
+                          <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        </div>
+
+                        <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-75 group-hover:scale-100">
+                          <Sparkles className="w-4 h-4 text-white" />
+                        </div>
                       </div>
 
-                      <div className="absolute -top-2 -right-2 w-8 h-8 bg-accent/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-75 group-hover:scale-100">
-                        <Sparkles className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-
-                    <h3 className="text-2xl font-semibold text-white mb-2 group-hover:text-accent transition-colors duration-500">
-                      {member.name}
-                    </h3>
-                    <p className="text-accent font-medium mb-4 text-lg">
-                      {member.role}
-                    </p>
-                    <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
-                      {member.description}
-                    </p>
-                  </CardContent>
-                </Card>
+                      <h3 className="text-2xl font-semibold text-white mb-2 group-hover:text-accent transition-colors duration-500">
+                        {member.name}
+                      </h3>
+                      <p className="text-accent font-medium mb-4 text-lg">
+                        {member.role}
+                      </p>
+                      <p className="text-gray-400 leading-relaxed group-hover:text-gray-300 transition-colors duration-500">
+                        {member.description}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -554,7 +565,7 @@ export default function AboutPage() {
           </div>
 
           <div className="max-w-7xl mx-auto relative">
-            <div className="text-center mb-20">
+            <Reveal className="text-center mb-20">
               <SectionBadge
                 icon={TrendingUp}
                 text="Our Impact"
@@ -570,21 +581,23 @@ export default function AboutPage() {
                 Measurable results that demonstrate our commitment to
                 educational excellence and institutional success.
               </p>
-            </div>
+            </Reveal>
 
             <div className="grid md:grid-cols-4 gap-8">
               {STATS_DATA.map((stat, index) => (
-                <div key={index} className="group text-center">
-                  <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl">
-                    <stat.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                    <div className="text-4xl md:text-5xl font-bold text-white mb-3 group-hover:text-accent transition-colors duration-500">
-                      {stat.number}
+                <Reveal key={stat.label} delay={index * 0.08}>
+                  <div className="group text-center">
+                    <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl">
+                      <stat.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
+                      <div className="text-4xl md:text-5xl font-bold text-white mb-3 group-hover:text-accent transition-colors duration-500">
+                        {stat.number}
+                      </div>
+                      <p className="text-white/80 font-medium text-lg group-hover:text-white transition-colors duration-500">
+                        {stat.label}
+                      </p>
                     </div>
-                    <p className="text-white/80 font-medium text-lg group-hover:text-white transition-colors duration-500">
-                      {stat.label}
-                    </p>
                   </div>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -596,7 +609,7 @@ export default function AboutPage() {
           className="py-20 px-4 sm:px-6 lg:px-8 relative"
         >
           <div className="max-w-7xl mx-auto relative">
-            <div className="text-center mb-16">
+            <Reveal className="text-center mb-16">
               <SectionBadge icon={Sparkles} text="Our Impact" />
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
                 Transforming Education for Everyone
@@ -605,22 +618,21 @@ export default function AboutPage() {
                 Learnova empowers teachers, students, institutions, and parents
                 with meaningful outcomes.
               </p>
-            </div>
+            </Reveal>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {IMPACT_DATA.map((impact, index) => (
-                <div
-                  key={index}
-                  className="group bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25 text-center"
-                >
-                  <impact.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
-                  <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-accent transition-colors duration-500">
-                    {impact.title}
-                  </h3>
-                  <p className="text-gray-300 leading-relaxed text-sm group-hover:text-gray-200 transition-colors duration-500">
-                    {impact.description}
-                  </p>
-                </div>
+                <Reveal key={impact.title} delay={index * 0.08}>
+                  <div className="group bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/20 hover:border-accent/40 transition-all duration-700 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25 text-center">
+                    <impact.icon className="w-12 h-12 text-accent mx-auto mb-6 group-hover:scale-110 transition-transform duration-500" />
+                    <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-accent transition-colors duration-500">
+                      {impact.title}
+                    </h3>
+                    <p className="text-gray-300 leading-relaxed text-sm group-hover:text-gray-200 transition-colors duration-500">
+                      {impact.description}
+                    </p>
+                  </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -628,7 +640,7 @@ export default function AboutPage() {
 
         {/* CTA Section */}
         <section id="get-started" className="py-20 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
+          <Reveal className="max-w-4xl mx-auto text-center">
             <div className="bg-gradient-to-br from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
                 Ready to Transform Your Institution?
@@ -649,7 +661,7 @@ export default function AboutPage() {
                 </ActionButton>
               </div>
             </div>
-          </div>
+          </Reveal>
         </section>
       </div>
 

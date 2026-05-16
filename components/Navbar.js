@@ -32,11 +32,9 @@ export function Navbar() {
   const dropdownRef = useRef(null);
   const pathname = usePathname();
 
-  //fixed Add Auto-Close on Route Change
-  useEffect(() => {
-    setIsDropdownOpen(false);
-  }, [pathname]);
-
+  // Handle scroll effect for transparency
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollProgressValue = Number.isFinite(scrollProgress) ? scrollProgress : 0;
 
 
   // Handle scroll effect
@@ -184,14 +182,19 @@ export function Navbar() {
   return (
     <>
       {/* Premium gradient background overlay - Fades out as we scroll down to let glassmorphism shine */}
-      <div className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300" 
-           style={{ opacity: 1 - scrollProgress * 0.5 }} />
+       <div className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300" 
+           style={{ opacity: 1 - scrollProgressValue * 0.5 }} />
 
       <nav
-        className={`fixed w-full top-0 z-52 transition-all duration-100 ease-in-out ${scrolled
-            ? "backdrop-blur-3xl border-b border-white/20 bg-black/40 shadow-2xl shadow-black/50"
-            : "backdrop-blur-2xl border-b border-white/10 bg-black/20"
-          } `}
+        className={`fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out`}
+        style={{
+          backgroundColor: `rgba(0, 0, 0, ${scrollProgressValue * 0.4})`,
+          backdropFilter: `blur(${scrollProgressValue * 24}px)`,
+          WebkitBackdropFilter: `blur(${scrollProgressValue * 24}px)`,
+          borderBottom: `1px solid rgba(255, 255, 255, ${scrollProgressValue * 0.1})`,
+          paddingTop: `${0.5 - scrollProgressValue * 0.5}rem`,
+          paddingBottom: `${0.5 - scrollProgressValue * 0.5}rem`,
+        }}
       >
         {/* Premium shimmer effect - FIXED: Using CSS classes instead of inline styles */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -skew-x-12 animate-shimmer opacity-0 hover:opacity-100 transition-opacity duration-1000" />
