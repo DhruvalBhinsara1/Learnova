@@ -1,26 +1,26 @@
 [
   {
     "username": "Premshaw23",
-    "name": "Prem Shaw"
+    "name": "Prem Shaw",
+    "admin": true,
+    "contributions": 149
   },
-  {
-    "username": "prashantbhati",
-    "name": "Prashant Bhati"
-  },
-  {
-    "username": "polawarpranav",
-    "name": "Polawar Pranav Shirish"
-  },
-  {
-    "username": "abirghosh",
-    "name": "Abir Ghosh"
-  },
-  {
-    "username": "anujramshrivastava",
-    "name": "Anuj Ram Shrivastava"
-  },
-  {
-    "username": "chandana-s",
-    "name": "Chandana S"
-  }
+  { "username": "leno23", "contributions": 17 },
+  { "username": "RUSHILPATEL33", "contributions": 9 },
+  { "username": "Nihal-Reddy-K", "contributions": 5 },
+  { "username": "PRODHOSH", "contributions": 4 },
+  { "username": "Nazia012", "contributions": 3 },
+  { "username": "Prashantbhati7", "contributions": 3 },
+  { "username": "tanishrajh", "contributions": 3 },
+  { "username": "AdityaSekharDas", "contributions": 2 },
+  { "username": "kannatinaveena", "contributions": 2 },
+  { "username": "Shayan-Bhowmik", "contributions": 2 },
+  { "username": "Subham503", "contributions": 2 },
+  { "username": "Hussain053", "contributions": 1 },
+  { "username": "vaishnavijha12", "contributions": 1 },
+  { "username": "PojashriJM", "contributions": 1 },
+  { "username": "Pragya005", "contributions": 1 },
+  { "username": "Shrutika-Dahale", "contributions": 1 },
+  { "username": "pragya0129", "contributions": 1 },
+  { "username": "Sagun-Bajpai", "contributions": 1 }
 ]

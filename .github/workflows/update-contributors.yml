@@ -1,0 +1,145 @@
+name: Update Contributors
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: '0 2 * * *'   # daily at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch contributors from GitHub API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/Premshaw23/Learnova/contributors?per_page=100" \
+            -o /tmp/raw.json
+
+          # Bail out if the API returned an error object instead of an array
+          if python3 -c "import json,sys; d=json.load(open('/tmp/raw.json')); sys.exit(0 if isinstance(d,list) else 1)"; then
+            echo "API returned a valid contributors list"
+          else
+            echo "API error: $(cat /tmp/raw.json)"
+            exit 1
+          fi
+
+      - name: Rebuild contributors.json and README section
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+import json, os, re, urllib.request
+
+token = os.environ.get("GH_TOKEN", "")
+API_HEADERS = {
+    "Authorization": f"Bearer {token}",
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "learnova-contributor-sync",
+}
+
+def is_human(login):
+    """Return True only for real User accounts — filters bots, apps, orgs."""
+    try:
+        req = urllib.request.Request(
+            f"https://api.github.com/users/{login}",
+            headers=API_HEADERS,
+        )
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read()).get("type") == "User"
+    except Exception as e:
+        print(f"  type-check failed for {login}: {e} — including anyway")
+        return True  # on API error, include the user to be safe
+
+with open("/tmp/raw.json") as f:
+    raw = json.load(f)
+
+# ── Build contributors list ──────────────────────────────────────────────
+admin_contributions = 0
+others = []
+
+for c in raw:
+    login = c.get("login", "")
+    count = c.get("contributions", 0)
+    if "[bot]" in login.lower():
+        continue
+    if not is_human(login):
+        print(f"Skipping {login} (non-User account)")
+        continue
+    if login.lower() == "premshaw23":
+        admin_contributions = count
+    else:
+        others.append({"username": login, "contributions": count})
+
+result = [
+    {"username": "Premshaw23", "name": "Prem Shaw", "admin": True, "contributions": admin_contributions}
+] + others  # API returns sorted by contributions desc
+
+with open("data/contributors.json", "w") as f:
+    json.dump(result, f, indent=2)
+    f.write("\n")
+
+print(f"contributors.json: {len(result)} entries")
+
+# ── Rebuild README contributors table (5 columns) ────────────────────────
+COLS = 5
+GH = "https://github.com"
+
+def cell(c):
+    u = c["username"]
+    label = f'**{c["name"]}**' if c.get("admin") else f"@{u}"
+    img = f'<a href="{GH}/{u}"><img src="{GH}/{u}.png?size=60" width="52" height="52" alt="{u}"/></a>'
+    return f"{img}<br>{label}"
+
+chunks = [result[i:i+COLS] for i in range(0, len(result), COLS)]
+
+# First chunk becomes the header row; all chunks after are data rows
+rows = []
+for idx, chunk in enumerate(chunks):
+    cells = [cell(c) for c in chunk]
+    cells += [""] * (COLS - len(cells))          # pad last row
+    rows.append("| " + " | ".join(cells) + " |")
+    if idx == 0:
+        rows.append("| " + " | ".join([":---:"] * COLS) + " |")
+
+table = "\n".join(rows)
+block = f"<!-- CONTRIBUTORS:START -->\n{table}\n<!-- CONTRIBUTORS:END -->"
+
+with open("README.md", "r", encoding="utf-8") as f:
+    readme = f.read()
+
+updated = re.sub(
+    r"<!-- CONTRIBUTORS:START -->.*?<!-- CONTRIBUTORS:END -->",
+    block,
+    readme,
+    flags=re.DOTALL,
+)
+
+with open("README.md", "w", encoding="utf-8") as f:
+    f.write(updated)
+
+print("README.md contributors section updated")
+PYEOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/contributors.json README.md
+          if git diff --staged --quiet; then
+            echo "No changes — skipping commit"
+          else
+            git commit -m "chore: sync contributors list [skip ci]"
+            git push
+          fi

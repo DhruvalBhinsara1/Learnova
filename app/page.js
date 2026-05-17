@@ -29,7 +29,6 @@ import Link from "next/link";
 import { analytics } from "@/lib/firebaseConfig";
 import { logEvent } from "firebase/analytics";
 import LearnovaChatbot from "@/components/ChatBot";
-import ContributorsSection from "@/components/ContributorsSection";
 
 // Constants moved outside component for better performance
 const PARTICLES_DATA = [
@@ -551,8 +550,6 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-
-        <ContributorsSection />
 
         {/* Stats Section */}
         <section

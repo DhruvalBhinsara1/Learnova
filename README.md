@@ -258,21 +258,6 @@ You are free to use, modify, and distribute this software commercially or person
 
 ---
 
-## 👥 Contributors
-
-Thank you to everyone who helps improve Learnova. Core contributors (see also the home page grid):
-
-| | Name | GitHub |
-|---|------|--------|
-| ![Premshaw23](https://github.com/Premshaw23.png?size=40) | Prem Shaw | [@Premshaw23](https://github.com/Premshaw23) |
-| ![prashantbhati](https://github.com/prashantbhati.png?size=40) | Prashant Bhati | [@prashantbhati](https://github.com/prashantbhati) |
-| ![polawarpranav](https://github.com/polawarpranav.png?size=40) | Polawar Pranav Shirish | [@polawarpranav](https://github.com/polawarpranav) |
-| ![abirghosh](https://github.com/abirghosh.png?size=40) | Abir Ghosh | [@abirghosh](https://github.com/abirghosh) |
-| ![anujramshrivastava](https://github.com/anujramshrivastava.png?size=40) | Anuj Ram Shrivastava | [@anujramshrivastava](https://github.com/anujramshrivastava) |
-| ![chandana-s](https://github.com/chandana-s.png?size=40) | Chandana S | [@chandana-s](https://github.com/chandana-s) |
-
----
-
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
@@ -293,3 +278,15 @@ Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
 ## 🔒 Security
 
 Found a security vulnerability? Please report it responsibly to **security@learnova.com** instead of opening a public issue. See [SECURITY.md](SECURITY.md) for details.
+
+---
+
+## 👥 Contributors
+
+<!-- CONTRIBUTORS:START -->
+| <a href="https://github.com/Premshaw23"><img src="https://github.com/Premshaw23.png?size=60" width="52" height="52" alt="Premshaw23"/></a><br>**Prem Shaw** | <a href="https://github.com/leno23"><img src="https://github.com/leno23.png?size=60" width="52" height="52" alt="leno23"/></a><br>@leno23 | <a href="https://github.com/RUSHILPATEL33"><img src="https://github.com/RUSHILPATEL33.png?size=60" width="52" height="52" alt="RUSHILPATEL33"/></a><br>@RUSHILPATEL33 | <a href="https://github.com/Nihal-Reddy-K"><img src="https://github.com/Nihal-Reddy-K.png?size=60" width="52" height="52" alt="Nihal-Reddy-K"/></a><br>@Nihal-Reddy-K | <a href="https://github.com/PRODHOSH"><img src="https://github.com/PRODHOSH.png?size=60" width="52" height="52" alt="PRODHOSH"/></a><br>@PRODHOSH |
+|:---:|:---:|:---:|:---:|:---:|
+| <a href="https://github.com/Nazia012"><img src="https://github.com/Nazia012.png?size=60" width="52" height="52" alt="Nazia012"/></a><br>@Nazia012 | <a href="https://github.com/Prashantbhati7"><img src="https://github.com/Prashantbhati7.png?size=60" width="52" height="52" alt="Prashantbhati7"/></a><br>@Prashantbhati7 | <a href="https://github.com/tanishrajh"><img src="https://github.com/tanishrajh.png?size=60" width="52" height="52" alt="tanishrajh"/></a><br>@tanishrajh | <a href="https://github.com/AdityaSekharDas"><img src="https://github.com/AdityaSekharDas.png?size=60" width="52" height="52" alt="AdityaSekharDas"/></a><br>@AdityaSekharDas | <a href="https://github.com/kannatinaveena"><img src="https://github.com/kannatinaveena.png?size=60" width="52" height="52" alt="kannatinaveena"/></a><br>@kannatinaveena |
+| <a href="https://github.com/Shayan-Bhowmik"><img src="https://github.com/Shayan-Bhowmik.png?size=60" width="52" height="52" alt="Shayan-Bhowmik"/></a><br>@Shayan-Bhowmik | <a href="https://github.com/Subham503"><img src="https://github.com/Subham503.png?size=60" width="52" height="52" alt="Subham503"/></a><br>@Subham503 | <a href="https://github.com/Hussain053"><img src="https://github.com/Hussain053.png?size=60" width="52" height="52" alt="Hussain053"/></a><br>@Hussain053 | <a href="https://github.com/vaishnavijha12"><img src="https://github.com/vaishnavijha12.png?size=60" width="52" height="52" alt="vaishnavijha12"/></a><br>@vaishnavijha12 | <a href="https://github.com/PojashriJM"><img src="https://github.com/PojashriJM.png?size=60" width="52" height="52" alt="PojashriJM"/></a><br>@PojashriJM |
+| <a href="https://github.com/Pragya005"><img src="https://github.com/Pragya005.png?size=60" width="52" height="52" alt="Pragya005"/></a><br>@Pragya005 | <a href="https://github.com/Shrutika-Dahale"><img src="https://github.com/Shrutika-Dahale.png?size=60" width="52" height="52" alt="Shrutika-Dahale"/></a><br>@Shrutika-Dahale | <a href="https://github.com/pragya0129"><img src="https://github.com/pragya0129.png?size=60" width="52" height="52" alt="pragya0129"/></a><br>@pragya0129 | <a href="https://github.com/Sagun-Bajpai"><img src="https://github.com/Sagun-Bajpai.png?size=60" width="52" height="52" alt="Sagun-Bajpai"/></a><br>@Sagun-Bajpai |  |
+<!-- CONTRIBUTORS:END -->
