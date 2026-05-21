@@ -31,6 +31,7 @@ export default function RoleSelection({ onRoleSelect }) {
             <button
               key={role}
               onClick={() => onRoleSelect(role)}
+              aria-label={`Select ${config.title} role`}
               onKeyDown={(e) => handleKeyDown(e, role)} // ✅ NEW — keyboard support
               className="group p-4 bg-gray-800/70 backdrop-blur-sm rounded-2xl border border-gray-700/50 hover:border-indigo-500/50 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl text-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900" // ✅ NEW — focus ring
             >
@@ -39,7 +40,7 @@ export default function RoleSelection({ onRoleSelect }) {
               >
                 <IconComponent className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl text-centre mx-auto font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">
+              <h3 className="text-xl text-center mx-auto font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">
                 {config.title}
               </h3>
               <p className="text-gray-300 text-sm leading-relaxed group-hover:text-gray-200 transition-colors">
