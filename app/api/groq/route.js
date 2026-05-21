@@ -1,37 +1,10 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MAX_MESSAGE_LENGTH = 2000;
-
-const SYSTEM_PROMPT =
-  "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem. You help with questions about attendance automation, smart activities, security features, analytics, and educational technology. Always be helpful, informative, and encouraging. Keep responses concise but comprehensive.";
-
-// Rate limiting setup
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // max 10 requests per minute
-const rateLimitMap = new Map();
-
-const isRateLimited = (userId) => {
-  const now = Date.now();
-  if (!rateLimitMap.has(userId)) {
-    rateLimitMap.set(userId, [now]);
-    return false;
-  }
-
-  const timestamps = rateLimitMap.get(userId);
-  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
-
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(userId, validTimestamps);
-    return true;
-  }
-
-  validTimestamps.push(now);
-  rateLimitMap.set(userId, validTimestamps);
-  return false;
-};
 
 /**
  * Handles incoming chat completions requests using the Groq AI SDK.
@@ -52,8 +25,9 @@ export async function POST(request) {
       return jsonError("Unauthorized", 401);
     }
 
-    // Rate limiting per authenticated user
-    if (isRateLimited(decodedToken.uid)) {
+    // Rate limiting per authenticated user (persisted across cold starts)
+    const rateLimit = await checkRateLimit(decodedToken.uid);
+    if (!rateLimit.allowed) {
       return jsonError("Too many requests. Please try again later.", 429);
     }
 
