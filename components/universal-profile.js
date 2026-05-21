@@ -451,9 +451,9 @@ export default function UniversalProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
-        <div className="text-center text-white pt-20">
+        <div className="text-center text-foreground pt-20">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-400">Checking authentication...</p>
         </div>
@@ -462,9 +462,9 @@ export default function UniversalProfile() {
   }
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
-        <div className="text-center text-white pt-20">
+        <div className="text-center text-foreground pt-20">
           <div className="w-16 h-16 bg-gradient-to-r from-accent to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
             <User className="w-8 h-8" />
           </div>

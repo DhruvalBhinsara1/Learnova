@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import {
@@ -46,6 +47,10 @@ const Reveal = ({ children, className = "", delay = 0, y = 28 }) => (
 );
 
 export default function ActivityPage() {
+  const { theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? theme === "dark" : true;
   const { user } = useAuth();
   const router = useRouter();
   const [scrollY, setScrollY] = useState(0);
@@ -261,8 +266,8 @@ export default function ActivityPage() {
   return (
     <>
       {/* Background Effects */}
-      <div className="fixed inset-0 -z-10">
-        <DarkVeil />
+      <div className="fixed inset-0 -z-10 bg-background">
+        {isDark && <DarkVeil />}
 
         {/* Mouse-following gradient orb */}
         <div
@@ -313,7 +318,7 @@ export default function ActivityPage() {
             </Reveal>
 
             <Reveal delay={0.2}>
-              <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+              <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
                 Learn Through{" "}
                 <span className="bg-gradient-to-r from-accent via-purple-400 to-pink-400 bg-clip-text text-transparent">
                   Play
@@ -322,7 +327,7 @@ export default function ActivityPage() {
             </Reveal>
 
             <Reveal delay={0.3}>
-              <p className="text-xl md:text-2xl text-gray-300 leading-relaxed max-w-3xl mx-auto mb-8">
+              <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed max-w-3xl mx-auto mb-8">
                 Discover engaging educational games and quizzes designed to make
                 learning{" "}
                 <span className="text-accent font-semibold">
@@ -342,13 +347,13 @@ export default function ActivityPage() {
                 ].map((stat, index) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20"
+                    className="flex items-center space-x-2 bg-card backdrop-blur-sm rounded-full px-4 py-2 border border-border"
                   >
                     <stat.icon className="w-5 h-5 text-accent" />
-                    <span className="text-white font-semibold">
+                    <span className="text-foreground font-semibold">
                       {stat.value}
                     </span>
-                    <span className="text-gray-400 text-sm">{stat.label}</span>
+                    <span className="text-muted-foreground text-sm">{stat.label}</span>
                   </div>
                 ))}
               </div>
@@ -362,7 +367,7 @@ export default function ActivityPage() {
             <Reveal delay={0.1}>
               <div className="flex items-center justify-between mb-12">
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+                  <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
                     Featured Activities
                   </h2>
                   <p className="text-gray-400">
@@ -379,7 +384,7 @@ export default function ActivityPage() {
             <div className="grid lg:grid-cols-3 gap-8">
               {featuredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.1 + index * 0.1}>
-                  <Card className="group bg-black/40 backdrop-blur-xl border-white/10 hover:border-accent/50 transition-all duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/50 transition-all duration-700 hover:shadow-2xl hover:shadow-accent/25 overflow-hidden">
                     <div
                       className={`h-2 bg-gradient-to-r ${activity.gradient}`}
                     />
@@ -391,18 +396,18 @@ export default function ActivityPage() {
                         >
                           <activity.icon className="w-6 h-6 text-white" />
                         </div>
-                        <div className="flex items-center space-x-1 bg-black/50 px-2 py-1 rounded-full">
+                        <div className="flex items-center space-x-1 bg-muted px-2 py-1 rounded-full">
                           <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                          <span className="text-white font-medium text-sm">
+                          <span className="text-foreground font-medium text-sm">
                             {activity.rating}
                           </span>
                         </div>
                       </div>
 
-                      <CardTitle className="text-white text-xl group-hover:text-accent transition-colors duration-300">
+                      <CardTitle className="text-foreground text-xl group-hover:text-accent transition-colors duration-300">
                         {activity.title}
                       </CardTitle>
-                      <p className="text-gray-400 text-sm line-clamp-2">
+                      <p className="text-muted-foreground text-sm line-clamp-2">
                         {activity.description}
                       </p>
                     </CardHeader>
@@ -448,13 +453,13 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 mb-16">
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
-              <div className="bg-black/40 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-white/10 hover:border-accent/20 transition-all duration-300">
+              <div className="bg-card backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-border hover:border-accent/20 transition-all duration-300">
                 <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-white flex items-center">
+                  <h3 className="text-xl font-semibold text-foreground flex items-center">
                     <Filter className="w-5 h-5 mr-3 text-accent" />
                     Filter Activities
                   </h3>
-                  <div className="w-full sm:w-auto flex items-center space-x-2 bg-black/30 rounded-full px-4 py-2 border border-white/10">
+                  <div className="w-full sm:w-auto flex items-center space-x-2 bg-background rounded-full px-4 py-2 border border-border">
                     <Search className="w-4 h-4 text-gray-400" />
                     <input
                       type="text"
@@ -470,7 +475,7 @@ export default function ActivityPage() {
                 <div className="grid md:grid-cols-2 gap-8">
                   {/* Category Filter */}
                   <div>
-                    <label className="text-sm font-semibold text-white mb-4 block">
+                    <label className="text-sm font-semibold text-foreground mb-4 block">
                       Subject Category
                     </label>
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -492,7 +497,7 @@ export default function ActivityPage() {
 
                   {/* Level Filter */}
                   <div>
-                    <label className="text-sm font-semibold text-white mb-4 block">
+                    <label className="text-sm font-semibold text-foreground mb-4 block">
                       Education Level
                     </label>
                     <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
@@ -521,9 +526,9 @@ export default function ActivityPage() {
           <div className="max-w-7xl mx-auto">
             <Reveal delay={0.1}>
               <div className="mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                  All Activities
-                </h2>
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+                    All Activities
+                  </h2>
                 <p className="text-gray-400">
                   {filteredActivities.length} activities found
                   {selectedCategory !== "all" &&
@@ -538,7 +543,7 @@ export default function ActivityPage() {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredActivities.map((activity, index) => (
                 <Reveal key={activity.id} delay={0.05 + index * 0.05}>
-                  <Card className="group bg-black/40 backdrop-blur-xl border-white/10 hover:border-accent/30 transition-all duration-500 hover:shadow-xl hover:shadow-accent/20">
+                  <Card className="group bg-card backdrop-blur-xl border-border hover:border-accent/30 transition-all duration-500 hover:shadow-xl hover:shadow-accent/20">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between mb-3">
                         <div
@@ -547,9 +552,9 @@ export default function ActivityPage() {
                           <activity.icon className="w-5 h-5 text-white" />
                         </div>
                         <div className="flex items-center space-x-2 gap-2">
-                          <div className="flex items-center space-x-1 bg-black/50 px-2 py-1 rounded-full">
+                          <div className="flex items-center space-x-1 bg-muted px-2 py-1 rounded-full">
                             <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                            <span className="text-white text-xs font-medium">
+                            <span className="text-foreground text-xs font-medium">
                               {activity.rating}
                             </span>
                           </div>
@@ -564,10 +569,10 @@ export default function ActivityPage() {
                         </div>
                       </div>
 
-                      <CardTitle className="text-white text-lg group-hover:text-accent transition-colors duration-300">
+                      <CardTitle className="text-foreground text-lg group-hover:text-accent transition-colors duration-300">
                         {activity.title}
                       </CardTitle>
-                      <p className="text-gray-400 text-sm line-clamp-2">
+                      <p className="text-muted-foreground text-sm line-clamp-2">
                         {activity.description}
                       </p>
                     </CardHeader>
@@ -611,7 +616,7 @@ export default function ActivityPage() {
               <Reveal>
                 <div className="text-center py-16">
                   <Puzzle className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-white mb-2">
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
                     No Activities Found
                   </h3>
                   <p className="text-gray-400 mb-6">
@@ -637,9 +642,9 @@ export default function ActivityPage() {
         <section className="px-4 sm:px-6 lg:px-8 pb-20">
           <div className="max-w-4xl mx-auto">
             <Reveal>
-              <div className="bg-gradient-to-br from-black/50 to-purple-900/30 rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
+              <div className="bg-card rounded-3xl p-12 border border-accent/30 backdrop-blur-xl hover:border-accent/50 transition-all duration-700">
                 <Trophy className="w-16 h-16 text-accent mx-auto mb-6" />
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4 text-center">
                   Ready to Level Up Your Learning?
                 </h2>
                 <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto text-center">
@@ -647,13 +652,13 @@ export default function ActivityPage() {
                   engaging through our interactive platform.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-105 text-white font-semibold">
+                  <Button className="bg-gradient-to-r from-accent to-purple-500 hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-105 text-foreground font-semibold">
                     <Sparkles className="w-5 h-5 mr-2" />
                     Start Playing Now
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-white/20 text-white bg-black/30 hover:bg-black/50 transition-all duration-300"
+                    className="border-border text-foreground bg-muted hover:bg-muted/80 transition-all duration-300"
                   >
                     View Leaderboards
                     <ChevronRight className="w-4 h-4 ml-2" />

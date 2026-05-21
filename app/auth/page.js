@@ -218,11 +218,11 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen pt-10 bg-gradient-to-br from-gray-900 via-gray-800 to-black">
+    <div className="min-h-screen pt-10 bg-background">
       <Navbar />
 
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20"></div>
+        <div className=" absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-purple-600/10"></div>
         <div className="relative min-h-[98vh] max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
           {/* Role Selection Screen */}
           {showRoleSelection ? (
