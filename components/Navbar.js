@@ -32,7 +32,7 @@ export function Navbar() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-
+ 
   const {
   notifications,
   removeNotification,
