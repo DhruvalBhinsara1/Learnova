@@ -3,6 +3,7 @@ import { verifyFirebaseToken, getUserProfile, getUserProfileByEmail } from "@/li
 import { ObjectId } from "mongodb";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { NextResponse } from "next/server";
+import xss from "xss";
 
 export async function PUT(request) {
   try {
@@ -31,6 +32,7 @@ export async function PUT(request) {
 
     const body = await request.json();
     const { exceptionId, status, comments } = body;
+    const sanitizedComments = typeof comments === "string" ? xss(comments).trim() : "";
 
     if (!exceptionId) {
       return jsonError("exceptionId is required", 400);
@@ -88,7 +90,7 @@ export async function PUT(request) {
       {
         $set: {
           status: trimmedStatus,
-          comments,
+          comments: sanitizedComments,
           reviewedBy: decodedToken.email,
           reviewedAt: new Date(),
           updatedAt: new Date(),
