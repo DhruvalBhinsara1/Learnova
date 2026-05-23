@@ -27,6 +27,7 @@ const LearnovaChatbot = () => {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState("general");
   const [activeTab, setActiveTab] = useState("all");
   const [hasApiKey, setHasApiKey] = useState(true);
 
@@ -248,10 +249,10 @@ const LearnovaChatbot = () => {
             <div className="p-2 h-9 w-9 rounded-lg bg-white border border-slate-200 text-indigo-600 flex items-center justify-center animate-pulse">
               <Bot size={16} />
             </div>
-            <div className="bg-white border border-slate-100 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 shadow-xs">
-              <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-              <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-              <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></span>
+<div className="bg-white border border-slate-100 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 shadow-xs">
+  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></span>
             </div>
           </div>
         )}
