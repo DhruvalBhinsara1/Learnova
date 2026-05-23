@@ -1,4 +1,5 @@
 import { authenticateRequest } from "@/lib/error-handler";
+import { getUserProfile } from "@/lib/firebase-admin";
 import { connectDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,8 @@ export async function GET(request) {
   try {
     // Authenticate and establish tenant/role context BEFORE opening stream
     const decodedToken = await authenticateRequest(request);
-    const userRole = decodedToken.role || "student";
+    const profile = await getUserProfile(decodedToken.uid);
+    const userRole = profile?.role || "student";
     
     let isConnected = true;
 
