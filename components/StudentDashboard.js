@@ -27,6 +27,7 @@ import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
+import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
 import {
@@ -68,38 +69,18 @@ const StudentDashboard = () => {
   const [gamificationData, setGamificationData] = useState(null);
   const [viewMode, setViewMode] = useState("heatmap");
 
-  const attendanceStats = useMemo(() => {
-    const stats = { present: 0, absent: 0, late: 0, total: 0, percentage: 0 };
-    recentActivity.forEach((act) => {
-      const status = act.status ? String(act.status).toLowerCase() : "";
-      if (status === "present") stats.present += 1;
-      else if (status === "absent") stats.absent += 1;
-      else if (status === "late") stats.late += 1;
-    });
-    stats.total = stats.present + stats.absent + stats.late;
-    stats.percentage = stats.total > 0 ? Math.round(((stats.present + stats.late * 0.5) / stats.total) * 100) : 0;
-    return stats;
-  }, [recentActivity]);
+  // Mock attendance stats
+  const attendanceStats = {
+    present: 18,
+    absent: 2,
+    late: 1,
+    percentage: 92,
+  };
 
-  useEffect(() => {
-    const fetchGamification = async () => {
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/student/gamification", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setGamificationData(data);
-        }
-      } catch (err) {
-        console.error("Failed to load gamification data", err);
-      }
-    };
-    if (user) {
-      fetchGamification();
-    }
-  }, [user]);
+  const attendancePerformance = {
+    attendancePercentage: attendanceStats.percentage,
+    streakDays: 8,
+  };
 
   // Mock schedule data is now imported from @/constants/mockData
   useEffect(() => {
@@ -479,6 +460,11 @@ const StudentDashboard = () => {
                 </div>
               </div>
             </div>
+
+            <AchievementSection
+              attendancePercentage={attendancePerformance.attendancePercentage}
+              streakDays={attendancePerformance.streakDays}
+            />
 
             {/* Activity */}
             <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
