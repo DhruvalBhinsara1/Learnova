@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 
 import { useTheme } from "next-themes";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
@@ -222,6 +223,8 @@ export function Navbar() {
     ? scrollProgress
     : 0;
   
+  const isDark = (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark";
+  
   return (
     <>
       {/* Background Dimming Layer on Scroll */}
@@ -236,13 +239,13 @@ export function Navbar() {
         style={{
           // Use resolved theme when mounted; otherwise fall back to system preference
           backgroundColor:
-            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
+            isDark
               ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
               : `rgba(255,255,255,0.98)`,
           backdropFilter: `blur(20px)`,
           WebkitBackdropFilter: `blur(20px)`,
           borderBottom:
-            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
+            isDark
               ? `1px solid rgba(255,255,255,0.1)`
               : `1px solid rgba(0,0,0,0.08)`,
         }}
@@ -330,13 +333,54 @@ export function Navbar() {
 
               {/* Theme Toggle */}
               {mounted && (
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
+                <motion.button
+                  onClick={() => setTheme(isDark ? "light" : "dark")}
+                  className={`relative w-14 h-8 flex items-center justify-between rounded-full p-1 border transition-all duration-300 cursor-pointer overflow-hidden ${
+                    isDark
+                      ? "bg-zinc-950 border-zinc-800/80 hover:shadow-[0_0_15px_rgba(234,179,8,0.15)]"
+                      : "bg-zinc-100 border-zinc-200/80 hover:shadow-[0_0_15px_rgba(79,70,229,0.15)]"
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Toggle theme"
                 >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
+                  <Sun className={`h-3.5 w-3.5 ml-1 transition-colors duration-300 ${isDark ? "text-zinc-600" : "text-amber-500"}`} />
+                  <Moon className={`h-3.5 w-3.5 mr-1 transition-colors duration-300 ${isDark ? "text-violet-400" : "text-zinc-400"}`} />
+                  
+                  {/* Sliding handle */}
+                  <motion.div
+                    className={`absolute left-1 w-6 h-6 rounded-full shadow-md flex items-center justify-center border ${
+                      isDark
+                        ? "bg-zinc-900 border-zinc-800/50 text-violet-400"
+                        : "bg-white border-zinc-200/50 text-amber-500"
+                    }`}
+                    animate={{
+                      x: isDark ? 24 : 0,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 380,
+                      damping: 24,
+                    }}
+                  >
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.div
+                        key={isDark ? "dark" : "light"}
+                        initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
+                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                        exit={{ opacity: 0, rotate: 90, scale: 0.6 }}
+                        transition={{ duration: 0.15 }}
+                        className="flex items-center justify-center"
+                      >
+                        {isDark ? (
+                          <Moon className="h-3 w-3 fill-violet-500/20" />
+                        ) : (
+                          <Sun className="h-3 w-3 fill-yellow-500/20" />
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
+                  </motion.div>
+                </motion.button>
               )}
 
               {isAuthenticated ? (
@@ -416,15 +460,15 @@ export function Navbar() {
 
                 </div>
               ) : (
-                <Button
-                  asChild
-                  size="default"
-                  className="h-10 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-sm hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/30 dark:hover:shadow-blue-500/20"
+                <Button 
+                  asChild 
+                  size="default" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 h-10 text-sm shadow-sm active:scale-98 transition-all"
                 >
                   <Link href="/auth">
                     <span className="flex items-center gap-2">
                       Login
-                      <Sparkles className="h-4 w-4 text-blue-200 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+                      <Sparkles className="h-4 w-4 text-blue-200" />
                     </span>
                   </Link>
                 </Button>
@@ -508,6 +552,43 @@ export function Navbar() {
                 ))}
               </div>
             </div>
+            {/* Mobile Theme Selector */}
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Theme</span>
+              <div className="flex items-center justify-between p-1 bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200/40 dark:border-zinc-800/50 rounded-xl relative overflow-hidden">
+                <button
+                  onClick={() => setTheme("light")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg z-10 transition-colors relative cursor-pointer ${
+                    !isDark
+                      ? "text-indigo-600 dark:text-zinc-50"
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
+                  }`}
+                >
+                  <Sun className="h-3.5 w-3.5" />
+                  <span>Light</span>
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg z-10 transition-colors relative cursor-pointer ${
+                    isDark
+                      ? "text-yellow-500 dark:text-zinc-50"
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
+                  }`}
+                >
+                  <Moon className="h-3.5 w-3.5" />
+                  <span>Dark</span>
+                </button>
+                
+                {/* Slidable background track */}
+                <motion.div
+                  className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white dark:bg-zinc-800 rounded-lg shadow-sm"
+                  animate={{
+                    x: isDark ? "100%" : "0%"
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                />
+              </div>
+            </div>
 
             {/* Account Specific Navigation */}
             {isAuthenticated && (
@@ -524,15 +605,11 @@ export function Navbar() {
             {/* Primary Action Buttons */}
             <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
               {isAuthenticated ? (
-                <Button onClick={handleLogout} variant="destructive" size="default" className="h-10 w-full rounded-lg text-sm">
+                <Button onClick={handleLogout} variant="destructive" size="default" className="w-full text-white rounded-lg text-sm h-10">
                   <LogOut className="h-4 w-4 mr-2" /> Logout
                 </Button>
               ) : (
-                <Button
-                  asChild
-                  size="default"
-                  className="h-10 w-full rounded-lg bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md hover:shadow-blue-600/30"
-                >
+                <Button asChild size="default" className="w-full bg-blue-600 text-white rounded-lg text-sm h-10">
                   <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
                     <span className="flex items-center gap-2">
                       Get Started <Sparkles className="h-4 w-4 text-blue-200" />
