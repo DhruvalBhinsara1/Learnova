@@ -28,6 +28,9 @@ import ChartSkeleton from "@/components/ui/ChartSkeleton";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 
+// CRITICAL FIX: Imported missing useAuth hook to prevent ReferenceError crash
+import { useAuth } from "@/hooks/useAuth";
+
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
   { ssr: false, loading: () => <ChartSkeleton variant="chart" /> }
@@ -469,19 +472,19 @@ const SuperAdminDashboard = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <button className="text-blue-400 hover:text-blue-300 transition-colors">
+                      <button aria-label="Institute Settings" className="text-blue-400 hover:text-blue-300 transition-colors">
                         <Settings className="w-4 h-4" />
                       </button>
                       {institute.status === "active" ? (
-                        <button className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                        <button aria-label="Lock Institute" className="text-yellow-400 hover:text-yellow-300 transition-colors">
                           <Lock className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button className="text-green-400 hover:text-green-300 transition-colors">
+                        <button aria-label="Unlock Institute" className="text-green-400 hover:text-green-300 transition-colors">
                           <Unlock className="w-4 h-4" />
                         </button>
                       )}
-                      <button className="text-red-400 hover:text-red-300 transition-colors">
+                      <button aria-label="Ban Institute" className="text-red-400 hover:text-red-300 transition-colors">
                         <Ban className="w-4 h-4" />
                       </button>
                     </div>
