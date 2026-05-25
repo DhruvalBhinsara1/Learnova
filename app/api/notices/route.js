@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { connectDb } from "@/lib/mongodb";
+import { adminDb } from "@/lib/firebase-admin";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { z } from "zod";
@@ -23,8 +23,8 @@ async function publishNotice(request) {
   const body = await request.json();
   const validData = noticeSchema.parse(body);
 
-  const db = await connectDb();
-  
+
+
   const newNotice = {
     ...validData,
     author: decodedToken.name || decodedToken.email.split("@")[0],
@@ -34,11 +34,13 @@ async function publishNotice(request) {
     updatedAt: new Date(),
   };
 
-  const result = await db.collection("notices").insertOne(newNotice);
+  const result = await adminDb
+    .collection("notices")
+    .add(newNotice);
 
   return NextResponse.json({
     success: true,
-    notice: { id: result.insertedId, ...newNotice }
+    notice: { id: result.id, ...newData }
   });
 }
 

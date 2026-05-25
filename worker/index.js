@@ -20,40 +20,59 @@ async function syncAttendanceSW() {
   const records = await getOutboxRecords();
   if (records.length === 0) return;
 
-  try {
-    const response = await fetch("/api/attendance/sync", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // Credentials same-origin ensures cookies (like authToken) are sent!
-      credentials: "same-origin",
-      body: JSON.stringify({ records }),
-    });
+  const BATCH_SIZE = 50;
+  let totalSynced = 0;
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.success && data.syncedIds) {
-        for (const id of data.syncedIds) {
-          await removeFromOutbox(id);
+  try {
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+
+      const response = await fetch("/api/attendance/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        // Credentials same-origin ensures cookies (like authToken) are sent!
+        credentials: "same-origin",
+        body: JSON.stringify({ records: batch }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.syncedIds) {
+          for (const id of data.syncedIds) {
+            await removeFromOutbox(id);
+          }
+          totalSynced += data.syncedIds.length;
         }
-        
-        // Notify any open clients that sync completed
-        const clients = await self.clients.matchAll();
-        clients.forEach((client) => {
-          client.postMessage({ type: "SYNC_COMPLETE", count: data.syncedIds.length });
-        });
+      } else {
+        throw new Error(`Failed to sync batch: ${response.status} ${response.statusText}`);
       }
+    }
+
+    if (totalSynced > 0) {
+      // Notify any open clients that sync completed
+      const clients = await self.clients.matchAll();
+      clients.forEach((client) => {
+        client.postMessage({ type: "SYNC_COMPLETE", count: totalSynced });
+      });
     }
   } catch (error) {
     console.error("[Service Worker] Error during background sync:", error);
-    throw error; // throw to let the browser retry later
+    throw error;
   }
 }
 
-self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-attendance") {
-    console.log("[Service Worker] Handling sync-attendance event");
-    event.waitUntil(syncAttendanceSW());
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .catch(async () => {
+          const cached = await caches.match("/offline.html");
+          return cached || new Response("You are offline", {
+            headers: { "Content-Type": "text/html" },
+          });
+        })
+    );
   }
 });

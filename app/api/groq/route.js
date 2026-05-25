@@ -1,6 +1,7 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { AppError } from "@/lib/errors";
+import { authenticateRequest } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -8,22 +9,45 @@ const GROQ_API_URL =
   "https://api.groq.com/openai/v1/chat/completions";
 
 import { checkRateLimit } from "@/lib/rateLimit";
+import { detectInjection, sanitizeMessage, buildSecureMessages } from "@/utils/promptGuard";
+
+const groqSchema = z.object({
+  message: z.string().optional(),
+  userMessage: z.string().optional(),
+  messages: z.array(z.object({
+    role: z.string(),
+    content: z.string()
+  })).optional(),
+}).refine(
+  (data) => {
+    if (data.messages && data.messages.length > 0) {
+      const lastMsg = data.messages[data.messages.length - 1];
+      return lastMsg.content && lastMsg.content.trim().length > 0;
+    }
+    const message = data.message || data.userMessage;
+    return message && message.trim().length > 0;
+  },
+  {
+    message: "Message is required",
+  }
+).refine(
+  (data) => {
+    if (data.messages && data.messages.length > 0) {
+      const lastMsg = data.messages[data.messages.length - 1];
+      return lastMsg.content && lastMsg.content.trim().length <= 2000;
+    }
+    const message = data.message || data.userMessage;
+    return message && message.trim().length <= 2000;
+  },
+  {
+    message: "Message too long",
+  }
+);
 
 export async function POST(request) {
   try {
-    // Authentication
-    const authorization =
-      request.headers.get("authorization");
-
-    const token =
-      authorization?.split(" ")[1];
-
     const decodedToken =
-      await verifyFirebaseToken(token);
-
-    if (!decodedToken) {
-      return jsonError("Unauthorized", 401);
-    }
+      await authenticateRequest(request);
 
     // Rate limiting
     const rateLimitResult = await checkRateLimit(decodedToken.uid);
@@ -37,28 +61,34 @@ export async function POST(request) {
     // Parse body
     const body = await request.json();
 
-    const rawMessage =
-      typeof body.message === "string"
-        ? body.message
-        : body.userMessage;
-
-    const trimmedMessage =
-      rawMessage?.trim();
-
-    if (!trimmedMessage) {
-      return jsonError(
-        "Message is required",
-        400
-      );
+    const validation = groqSchema.safeParse(body);
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+      throw new ValidationError(firstError);
     }
 
-    // Validate length
-    if (trimmedMessage.length > 2000) {
-      return jsonError(
-        "Message too long",
-        400
-      );
+    let rawMessage = "";
+    let history = [];
+
+    if (validation.data.messages && validation.data.messages.length > 0) {
+      const lastMsg = validation.data.messages[validation.data.messages.length - 1];
+      rawMessage = lastMsg.content;
+      history = validation.data.messages.slice(0, -1);
+    } else {
+      rawMessage = validation.data.message || validation.data.userMessage;
     }
+
+    const trimmedMessage = rawMessage.trim();
+
+    // Check for prompt injection
+    const injectionCheck = detectInjection(trimmedMessage);
+    if (injectionCheck.isInjection) {
+      console.warn(`[nova-ai-safety] Injection blocked for user ${decodedToken.uid}: ${injectionCheck.matchedPattern}`);
+      return jsonError("Safety check: System instructions override or prompt injection attempt detected.", 400);
+    }
+
+    // Sanitize user message
+    const sanitizedMessage = sanitizeMessage(trimmedMessage);
 
     // API key
     const apiKey =
@@ -100,17 +130,11 @@ export async function POST(request) {
           signal: controller.signal,
           body: JSON.stringify({
             model: "llama-3.1-8b-instant",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem.",
-              },
-              {
-                role: "user",
-                content: trimmedMessage,
-              },
-            ],
+            messages: buildSecureMessages(
+              sanitizedMessage,
+              "You are Nova, the friendly AI assistant for Learnova - a Smart Student Engagement Ecosystem.",
+              history
+            ),
             max_tokens: 400,
             temperature: 0.7,
           }),
@@ -156,6 +180,13 @@ export async function POST(request) {
       message: content,
     });
   } catch (error) {
+    if (error instanceof AppError) {
+      return jsonError(
+        error.message,
+        error.statusCode
+      );
+    }
+
     if (error.name === "AbortError") {
       return jsonError(
         "Gateway Timeout: AI response took too long.",

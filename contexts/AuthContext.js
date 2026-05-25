@@ -1,19 +1,23 @@
 "use client";
 import { createContext, useContext } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth as useFirebaseAuth } from "@/hooks/useAuth";
 
-const AuthContext = createContext({});
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const auth = useAuth();
+  const auth = useFirebaseAuth();
 
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
 }
 
 export function useAuthContext() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === null) {
     throw new Error("useAuthContext must be used within an AuthProvider");
   }
   return context;
+}
+
+export function useAuth() {
+  return useAuthContext();
 }

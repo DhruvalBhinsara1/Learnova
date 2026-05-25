@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "react-hot-toast";
 import {
   CalendarDays,
   CheckCircle2,
@@ -87,6 +89,9 @@ function parseTimeToMinutes(timeLabel) {
 }
 
 export default function ProductivityPage() {
+  const { user } = useAuth();
+  const [dataLoaded, setDataLoaded] = useState(false);
+
   const [mode, setMode] = useState("focus");
   const [sessionSeconds, setSessionSeconds] = useState(MODES.focus.seconds);
   const [timeLeft, setTimeLeft] = useState(MODES.focus.seconds);
@@ -100,11 +105,7 @@ export default function ProductivityPage() {
   const [calendarFilter, setCalendarFilter] = useState("all");
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "Prep lesson plan", done: false, priority: "medium" },
-    { id: 2, text: "Review student analytics", done: true, priority: "low" },
-    { id: 3, text: "Create quick quiz", done: false, priority: "high" },
-  ]);
+  const [tasks, setTasks] = useState([]);
   const [agendaInput, setAgendaInput] = useState("");
   const [agendaLabel, setAgendaLabel] = useState("Focus");
   const [agendaItems, setAgendaItems] = useState({});
@@ -114,6 +115,8 @@ export default function ProductivityPage() {
   const [recentCompleted, setRecentCompleted] = useState(false);
   const audioContextRef = useRef(null);
   const soundscapeRef = useRef(null);
+  const syncTimerRef = useRef(null);
+  const isSyncingRef = useRef(false);
 
   const calendar = useMemo(() => buildCalendar(monthOffset), [monthOffset]);
   const now = new Date();
@@ -128,28 +131,112 @@ export default function ProductivityPage() {
     });
   }, [selectedDateKey]);
 
+  /** Syncs current tasks and agenda to the API. Writes to localStorage first for instant persistence. */
+  const syncToApi = useCallback(
+    async (currentTasks, currentAgenda) => {
+      try {
+        localStorage.setItem(TASKS_KEY, JSON.stringify(currentTasks));
+        localStorage.setItem(AGENDA_KEY, JSON.stringify(currentAgenda));
+      } catch (_) {
+        // localStorage may be full or unavailable
+      }
+
+      if (!user || isSyncingRef.current) return;
+      isSyncingRef.current = true;
+
+      try {
+        const token = await user.getIdToken();
+        await fetch("/api/productivity", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ tasks: currentTasks, agendaItems: currentAgenda }),
+        });
+      } catch (_) {
+        // Offline or API error — localStorage already has the data
+      } finally {
+        isSyncingRef.current = false;
+      }
+    },
+    [user]
+  );
+
+  /** Schedules a debounced API sync. Cancels any pending sync to avoid spamming. */
+  const debouncedSync = useCallback(
+    (currentTasks, currentAgenda) => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        syncToApi(currentTasks, currentAgenda);
+      }, 2000);
+    },
+    [syncToApi]
+  );
+
   useEffect(() => {
-    try {
-      const storedTasks = localStorage.getItem(TASKS_KEY);
-      const storedAgenda = localStorage.getItem(AGENDA_KEY);
-      if (storedTasks) {
-        setTasks(JSON.parse(storedTasks));
+    async function loadData() {
+      if (!user) {
+        try {
+          const savedTasks = localStorage.getItem(TASKS_KEY);
+          const savedAgenda = localStorage.getItem(AGENDA_KEY);
+          if (savedTasks) setTasks(JSON.parse(savedTasks));
+          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
+        } catch (_) {
+          // Corrupted localStorage — use empty defaults
+        }
+        setDataLoaded(true);
+        return;
       }
-      if (storedAgenda) {
-        setAgendaItems(JSON.parse(storedAgenda));
+
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/productivity", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tasks?.length > 0) setTasks(data.tasks);
+          if (data.agendaItems && Object.keys(data.agendaItems).length > 0) {
+            setAgendaItems(data.agendaItems);
+          }
+        } else {
+          throw new Error("API returned non-ok");
+        }
+      } catch (_) {
+        try {
+          const savedTasks = localStorage.getItem(TASKS_KEY);
+          const savedAgenda = localStorage.getItem(AGENDA_KEY);
+          if (savedTasks) setTasks(JSON.parse(savedTasks));
+          if (savedAgenda) setAgendaItems(JSON.parse(savedAgenda));
+        } catch (__) {
+          // Corrupted localStorage — use empty defaults
+        }
+      } finally {
+        setDataLoaded(true);
       }
-    } catch (error) {
-      console.error("Failed to load productivity storage", error);
     }
-  }, []);
+
+    loadData();
+  }, [user]);
 
   useEffect(() => {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+    if (!dataLoaded) return;
+    debouncedSync(tasks, agendaItems);
+  }, [tasks, agendaItems, dataLoaded, debouncedSync]);
 
   useEffect(() => {
-    localStorage.setItem(AGENDA_KEY, JSON.stringify(agendaItems));
-  }, [agendaItems]);
+    /** Re-sync pending localStorage data when the browser comes back online. */
+    function handleOnline() {
+      if (dataLoaded) {
+        syncToApi(tasks, agendaItems);
+      }
+    }
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [tasks, agendaItems, dataLoaded, syncToApi]);
 
   useEffect(() => {
     if (!isRunning) {
@@ -168,17 +255,52 @@ export default function ProductivityPage() {
     return () => clearInterval(timerId);
   }, [isRunning]);
 
+  /** Records a completed Pomodoro session to the API. */
+  const recordSession = useCallback(
+    async (duration, type) => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/productivity/session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            duration,
+            completedAt: new Date().toISOString(),
+            type,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.xpAwarded > 0) {
+            toast.success(`+${data.xpAwarded} XP earned!`);
+          }
+        }
+      } catch (_) {
+        // Offline — session not recorded, but timer continues
+      }
+    },
+    [user]
+  );
+
   useEffect(() => {
     if (timeLeft !== 0) {
       return;
     }
 
     setIsRunning(false);
+    const sessionDuration = Math.round(sessionSeconds / 60);
+
     if (mode === "focus") {
       const nextFocusCount = focusSessions + 1;
       setFocusSessions(nextFocusCount);
       setRecentCompleted(true);
       setTimeout(() => setRecentCompleted(false), 1400);
+      recordSession(sessionDuration, "focus");
       const nextMode = nextFocusCount % 4 === 0 ? "long" : "short";
       const nextSeconds = MODES[nextMode].seconds;
       setMode(nextMode);
@@ -186,13 +308,14 @@ export default function ProductivityPage() {
       setManualMinutes(String(Math.round(nextSeconds / 60)));
       setTimeLeft(nextSeconds);
     } else {
+      recordSession(sessionDuration, "break");
       const focusSeconds = MODES.focus.seconds;
       setMode("focus");
       setSessionSeconds(focusSeconds);
       setManualMinutes(String(Math.round(focusSeconds / 60)));
       setTimeLeft(focusSeconds);
     }
-  }, [timeLeft, mode, focusSessions]);
+  }, [timeLeft, mode, focusSessions, sessionSeconds, recordSession]);
 
   useEffect(() => {
     setAmbientMode(mode);
@@ -1094,12 +1217,20 @@ export default function ProductivityPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {["Breathing", "Stretch", "Hydrate"].map((item) => (
-                    <span
+                    <button
                       key={item}
-                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10"
+                      onClick={() => {
+                        setMode("short");
+                        setSessionSeconds(120);
+                        setTimeLeft(120);
+                        setManualMinutes("2");
+                        setIsRunning(true);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10 hover:bg-white/20 transition-colors cursor-pointer text-white"
                     >
                       {item}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </motion.div>

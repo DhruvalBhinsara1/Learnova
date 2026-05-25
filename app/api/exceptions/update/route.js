@@ -5,28 +5,52 @@ import { withErrorHandler } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { ObjectId } from "mongodb";
+import { z } from "zod";
 
 // Required to prevent build-time static generation errors
 export const dynamic = "force-dynamic";
+
+const exceptionUpdateSchema = z.object({
+  exceptionId: z
+    .string({
+      required_error: "exceptionId is required",
+      invalid_type_error: "exceptionId is required",
+    })
+    .trim()
+    .min(1, "exceptionId is required")
+    .refine((val) => ObjectId.isValid(val), {
+      message: "Invalid exception ID",
+    }),
+  status: z
+    .enum(["approved", "rejected"], {
+      required_error: "Invalid status value",
+      invalid_type_error: "Invalid status value",
+      message: "Invalid status value",
+    }),
+  comments: z.string().optional(),
+});
 
 export const PUT = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
 
   const body = await request.json();
-  const { exceptionId, status, comments } = body;
+  
+  const validation = exceptionUpdateSchema.safeParse(body);
+  if (!validation.success) {
+    let firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    const path = validation.error.issues?.[0]?.path?.[0];
+    const code = validation.error.issues?.[0]?.code;
 
-  if (!exceptionId) {
-    throw new ValidationError("exceptionId is required");
-  }
+    if (path === "exceptionId" && (code === "invalid_type" || firstError.includes("Required"))) {
+      firstError = "exceptionId is required";
+    } else if (path === "status" && (code === "invalid_type" || code === "invalid_enum_value" || firstError.includes("Required"))) {
+      firstError = "Invalid status value";
+    }
 
-  if (!ObjectId.isValid(exceptionId)) {
-    throw new ValidationError("Invalid exception ID");
+    throw new ValidationError(firstError);
   }
-
-  const trimmedStatus = typeof status === "string" ? status.trim() : "";
-  if (!["approved", "rejected"].includes(trimmedStatus)) {
-    throw new ValidationError("Invalid status value");
-  }
+  
+  const { exceptionId, status, comments } = validation.data;
 
   const db = await connectDb();
 
@@ -67,23 +91,32 @@ export const PUT = withErrorHandler(async (request) => {
 
      let result;
   try {
-    result = await db.collection("exceptions").updateOne(
-      { _id: new ObjectId(exceptionId) },
-      {
-        $set: {
-          status: trimmedStatus,
-          comments,
-          reviewedBy: decodedToken.email,
-          reviewedAt: new Date(),
-          updatedAt: new Date(),
-        },
+      const updateFields = {
+        status: status,
+        reviewedBy: decodedToken.email,
+        approverId: decodedToken.uid,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      };
+      if (comments !== undefined) {
+        updateFields.comments = comments;
       }
-    );
+
+      result = await db.collection("exceptions").updateOne(
+        { _id: new ObjectId(exceptionId) },
+        {
+          $set: updateFields,
+        }
+      );
   } catch (error) {
     throw new AppError("Internal server error", 500);
   }
 
   if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
+
+  console.log(
+    `[Audit Log] Exception ${exceptionId} ${status} by approver UID: ${decodedToken.uid} (${decodedToken.email}, Role: ${profile.role}) at ${new Date().toISOString()}`
+  );
 
   return NextResponse.json({ message: "Exception updated successfully" });
 });
