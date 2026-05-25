@@ -1,6 +1,7 @@
 // 1. Enhanced layout.js with proper structured data for sitelinks
 
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { FirestoreProvider } from "@/contexts/FirestoreContext";
 import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
@@ -8,8 +9,6 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import ErrorBoundary from "@/components/ErrorBoundary"; // Imported ErrorBoundary
-import LearnovaChatbot from "@/components/ChatBot";
 import ClientLayout from "@/components/ClientLayout";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
@@ -263,35 +262,30 @@ export default function RootLayout({ children }) {
             shadow="0 0 10px #4f46e5,0 0 5px #4f46e5"
           />
           <AuthProvider>
-            <NotificationProvider>
-              <Suspense fallback={null}>
-                <main id="main-content" className="outline-none" tabIndex="-1">
-                  <PageTransition>{children}</PageTransition>
-                </main>
+            <FirestoreProvider>
+              <NotificationProvider>
+                <Suspense fallback={null}>
+                  <main id="main-content" className="outline-none" tabIndex="-1">
+                    <PageTransition>{children}</PageTransition>
+                  </main>
 
-                <ScrollToTop />
+                  <ScrollToTop />
 
-                {/* Chatbot safely isolated inside ErrorBoundary */}
-                <div className="z-50">
-                  <ErrorBoundary>
-                    <LearnovaChatbot />
-                  </ErrorBoundary>
-                </div>
+                  <Footer />
+                  <ClientLayout />
+                  <BackToTop />
 
-                <Footer />
-                <ClientLayout />
-                <BackToTop />
-
-                <Toaster
-                  position="top-right"
-                  toastOptions={{
-                    duration: 4000,
-                    style: { fontWeight: 600 },
-                  }}
-                />
-                <OfflineIndicator />
-              </Suspense>
-            </NotificationProvider>
+                  <Toaster
+                    position="top-right"
+                    toastOptions={{
+                      duration: 4000,
+                      style: { fontWeight: 600 },
+                    }}
+                  />
+                  <OfflineIndicator />
+                </Suspense>
+              </NotificationProvider>
+            </FirestoreProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

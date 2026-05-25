@@ -103,6 +103,7 @@ export default function Footer() {
     { label: "Contact", href: "/contact" },
     { label: "Register", href: "/register" },
     { label: "Contributors", href: "/contributors" },
+    { label: "Terms & Conditions", href: "/terms" },
   ];
 
   const sectionLinks = [

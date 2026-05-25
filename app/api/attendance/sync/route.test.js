@@ -49,21 +49,21 @@ describe("attendance sync route", () => {
       email: "server@example.com",
     });
 
-    const batch = {
-      set: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
-    };
+    let transactionGet;
+    let transactionSet;
 
-    const attendanceQuery = { empty: true };
+    const docRef = {};
+
     const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn().mockResolvedValue(attendanceQuery),
-      doc: jest.fn(() => ({})),
+      doc: jest.fn(() => docRef),
     };
 
     getFirestore.mockReturnValue({
-      batch: jest.fn(() => batch),
+      runTransaction: jest.fn(async (callback) => {
+        transactionSet = jest.fn();
+        transactionGet = jest.fn().mockResolvedValue({ exists: false });
+        return callback({ get: transactionGet, set: transactionSet });
+      }),
       collection: jest.fn(() => collectionRef),
     });
 
@@ -75,7 +75,7 @@ describe("attendance sync route", () => {
             userId: "user-123",
             studentName: "Tampered Name",
             email: "tampered@example.com",
-            confidenceScore: 1.7,
+            confidenceScore: 85,
             queuedAt: Date.now(),
           },
         ],
@@ -89,13 +89,15 @@ describe("attendance sync route", () => {
     });
 
     expect(getUserProfile).toHaveBeenCalledWith("user-123");
-    expect(batch.set).toHaveBeenCalledWith(
+    expect(collectionRef.doc).toHaveBeenCalledWith(expect.stringMatching(/^user-123_\d{4}-\d{2}-\d{2}$/));
+    expect(transactionGet).toHaveBeenCalledTimes(1);
+    expect(transactionSet).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({
         userId: "user-123",
         studentName: "Server Name",
         email: "server@example.com",
-        confidenceScore: 1,
+        confidenceScore: 0.85,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
         offlineSynced: true,
       }),
@@ -111,20 +113,14 @@ describe("attendance sync route", () => {
 
     getUserProfile.mockResolvedValue(null);
 
-    const batch = {
-      set: jest.fn(),
-      commit: jest.fn().mockResolvedValue(undefined),
+    const collectionRef = {
+      doc: jest.fn(() => ({ get: jest.fn() })),
     };
 
-    const collectionRef = {
-      where: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      get: jest.fn(),
-      doc: jest.fn(() => ({})),
-    };
+    const runTransaction = jest.fn();
 
     getFirestore.mockReturnValue({
-      batch: jest.fn(() => batch),
+      runTransaction,
       collection: jest.fn(() => collectionRef),
     });
 
@@ -148,14 +144,14 @@ describe("attendance sync route", () => {
       success: false,
       error: "User profile not found for attendance sync.",
     });
-    expect(batch.set).not.toHaveBeenCalled();
-    expect(batch.commit).not.toHaveBeenCalled();
+    expect(runTransaction).not.toHaveBeenCalled();
   });
 
   test("normalizes confidence scores into the valid range", () => {
     expect(normalizeConfidenceScore(-2)).toBe(0);
     expect(normalizeConfidenceScore(0.42)).toBe(0.42);
-    expect(normalizeConfidenceScore(3.5)).toBe(1);
+    expect(normalizeConfidenceScore(75)).toBe(0.75);
+    expect(normalizeConfidenceScore(150)).toBe(1);
     expect(normalizeConfidenceScore(Number.NaN)).toBe(0);
   });
 });

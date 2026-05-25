@@ -4,10 +4,16 @@ import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 import SearchModal from "@/components/SearchModal";
 
 const InstallPWA = dynamic(() => import("@/components/InstallPWA"), {
+  ssr: false,
+  loading: () => null,
+});
+
+const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
   ssr: false,
   loading: () => null,
 });
@@ -63,6 +69,11 @@ export default function ClientLayout() {
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
+      <div className="z-50">
+        <ErrorBoundary>
+          <LearnovaChatbot />
+        </ErrorBoundary>
+      </div>
     </>
   );
 }

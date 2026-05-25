@@ -22,10 +22,14 @@ const syncSchema = z.object({
 });
 
 export function normalizeConfidenceScore(confidenceScore) {
-  const parsedScore = Number(confidenceScore);
+  let parsedScore = Number(confidenceScore);
 
   if (!Number.isFinite(parsedScore)) {
     return 0;
+  }
+
+  if (parsedScore > 1) {
+    parsedScore = parsedScore / 100;
   }
 
   return Math.max(0, Math.min(1, parsedScore));
@@ -53,7 +57,6 @@ async function handleSync(request) {
 
   initFirebaseAdmin();
   const db = getFirestore();
-  const batch = db.batch();
   const userProfile = await getUserProfile(decodedToken.uid);
 
   if (!userProfile) {
@@ -67,6 +70,7 @@ async function handleSync(request) {
   }
 
   const serverIdentity = resolveAttendanceIdentity(decodedToken, userProfile);
+  const instituteId = userProfile?.instituteId || null;
   
   const successfulIds = [];
   
@@ -100,48 +104,42 @@ async function handleSync(request) {
       continue;
     }
 
-    // Check if attendance already exists in Firestore for this date
-    const attendanceQuery = await db.collection("attendance_records")
-      .where("userId", "==", decodedToken.uid)
-      .where("date", "==", recordDate)
-      .limit(1)
-      .get();
+    // Atomic check-and-set using a Firestore transaction to prevent
+    // duplicate records under concurrent sync requests from multiple tabs or devices.
+    const newDocRef = db.collection("attendance_records").doc(`${decodedToken.uid}_${recordDate}`);
 
-    if (!attendanceQuery.empty) {
-      successfulIds.push(record.id);
-      processedUserDates.add(userDateKey);
-      continue;
-    }
+    await db.runTransaction(async (transaction) => {
+      const existingAttendance = await transaction.get(newDocRef);
+      if (existingAttendance.exists) {
+        return;
+      }
 
-    // Prepare new document
-    const newDocRef = db.collection("attendance_records").doc();
+      if (
+        (record.studentName && record.studentName !== serverIdentity.studentName) ||
+        (record.email && record.email !== serverIdentity.email)
+      ) {
+        console.warn(
+          `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
+        );
+      }
 
-    if (
-      (record.studentName && record.studentName !== serverIdentity.studentName) ||
-      (record.email && record.email !== serverIdentity.email)
-    ) {
-      console.warn(
-        `User ${decodedToken.uid} submitted offline attendance metadata that does not match the server profile`,
-      );
-    }
-
-    batch.set(newDocRef, {
-      userId: decodedToken.uid,
-      studentName: serverIdentity.studentName,
-      email: serverIdentity.email,
-      timestamp: FieldValue.serverTimestamp(),
-      date: recordDate,
-      status: "present",
-      confidenceScore: normalizeConfidenceScore(record.confidenceScore),
-      offlineSynced: true,
-      queuedAt: new Date(record.queuedAt),
+      transaction.set(newDocRef, {
+        userId: decodedToken.uid,
+        studentName: serverIdentity.studentName,
+        email: serverIdentity.email,
+        instituteId,
+        timestamp: FieldValue.serverTimestamp(),
+        date: recordDate,
+        status: "present",
+        confidenceScore: normalizeConfidenceScore(record.confidenceScore),
+        offlineSynced: true,
+        queuedAt: new Date(record.queuedAt),
+      });
     });
 
     successfulIds.push(record.id);
     processedUserDates.add(userDateKey);
   }
-
-  await batch.commit();
 
   return NextResponse.json({
     success: true,
