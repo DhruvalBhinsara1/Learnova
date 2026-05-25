@@ -335,11 +335,11 @@ export default function ProductivityPage() {
   }, [agendaForSelectedDate]);
 
   const ambientGradient =
-    ambientMode === "focus"
-      ? "from-slate-950 via-slate-900 to-indigo-950"
-      : ambientMode === "short"
-      ? "from-emerald-950 via-slate-900 to-teal-950"
-      : "from-purple-950 via-slate-900 to-indigo-950";
+  ambientMode === "focus"
+    ? "from-cyan-50 via-slate-100 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950"
+    : ambientMode === "short"
+    ? "from-emerald-50 via-slate-100 to-slate-100 dark:from-emerald-950 dark:via-slate-900 dark:to-teal-950"
+    : "from-purple-50 via-slate-100 to-slate-100 dark:from-purple-950 dark:via-slate-900 dark:to-indigo-950";
 
   const SoundscapeIcon =
     SOUNDSCAPES.find((item) => item.value === soundscape)?.icon || Volume2;
@@ -480,10 +480,10 @@ export default function ProductivityPage() {
 
   return (
     <div
-      className={`min-h-screen bg-linear-to-br ${ambientGradient} text-white relative overflow-hidden`}
+      className={`min-h-screen bg-linear-to-br ${ambientGradient} text-slate-900 dark:text-white relative overflow-hidden`} 
     >
       <Navbar />
-      <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
+      <div className="absolute inset-0 pointer-events-none z-0 hidden dark:block" aria-hidden="true">
         <DarkVeil />
       </div>
 
@@ -496,16 +496,16 @@ export default function ProductivityPage() {
       <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-6xl mx-auto space-y-12">
           <section className="text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10">
-              <Sparkles className="w-4 h-4 text-cyan-300" />
-              <span className="text-sm uppercase tracking-[0.3em] text-cyan-200">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100/90 border border-slate-400/80 text-cyan-600 dark:bg-white/10 dark:border-white/10 dark:text-cyan-300">
+              <Sparkles className="w-4 h-4 text-cyan-500" />
+              <span className="text-sm uppercase tracking-[0.3em] text-cyan-600 dark:text-cyan-300">
                 Productivity Suite
               </span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-bold">
               Stay in Flow. Track What Matters.
             </h1>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+            <p className="text-lg text-slate-700 dark:text-slate-300 max-w-2xl mx-auto">
               A productivity workspace designed for educators and learners.
               Plan your day, protect focus blocks, and keep tasks moving.
             </p>
@@ -514,7 +514,7 @@ export default function ProductivityPage() {
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
+                className="bg-slate-100/90 border border-slate-400/80 dark:bg-white/5 dark:border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -523,7 +523,7 @@ export default function ProductivityPage() {
               >
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <p className="text-sm text-slate-400">Pomodoro Timer</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Pomodoro Timer</p>
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <Timer className="w-5 h-5 text-cyan-300" />
                       {MODES[mode].label}
@@ -532,30 +532,30 @@ export default function ProductivityPage() {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => switchMode("focus")}
-                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                      className={`px-4 py-2 rounded-full border border-slate-400/80 dark:border-white/10 text-sm transition ${
                         mode === "focus"
-                          ? "bg-cyan-500/20 text-cyan-200"
-                          : "text-slate-300 hover:text-white"
+                          ? "bg-cyan-600 text-white dark:bg-cyan-500/25 dark:text-cyan-100"
+                          : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       Focus
                     </button>
                     <button
                       onClick={() => switchMode("short")}
-                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                      className={`px-4 py-2 rounded-full border border-slate-400/80 dark:border-white/10 text-sm transition ${
                         mode === "short"
-                          ? "bg-emerald-500/20 text-emerald-200"
-                          : "text-slate-300 hover:text-white"
+                          ? "bg-emerald-600 text-white dark:bg-emerald-500/25 dark:text-emerald-100"
+                          : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       Short
                     </button>
                     <button
                       onClick={() => switchMode("long")}
-                      className={`px-4 py-2 rounded-full border border-white/10 text-sm transition ${
+                      className={`px-4 py-2 rounded-full border border-slate-400/80 dark:border-white/10 text-sm transition ${
                         mode === "long"
-                          ? "bg-purple-500/20 text-purple-200"
-                          : "text-slate-300 hover:text-white"
+                          ? "bg-purple-600 text-white dark:bg-purple-500/25 dark:text-purple-100"
+                          : "text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                       }`}
                     >
                       Long
@@ -567,7 +567,7 @@ export default function ProductivityPage() {
                   <div className="flex items-center gap-6">
                     <div className="relative h-32 w-32">
                       <div
-                        className="absolute inset-0 rounded-full border-4 border-white/10"
+                        className="absolute inset-0 rounded-full border-4 border-slate-200/40 dark:border-white/10"
                         aria-hidden="true"
                       />
                       <div
@@ -578,14 +578,14 @@ export default function ProductivityPage() {
                           }deg, rgba(255,255,255,0.08) 0deg)`,
                         }}
                       />
-                      <div className="absolute inset-2 rounded-full bg-slate-950/70 flex items-center justify-center">
+                      <div className="absolute inset-2 rounded-full bg-slate-100/90 dark:bg-slate-950/70 flex items-center justify-center">
                         <span className={`text-3xl font-bold ${MODES[mode].accent}`}>
                           {formatTime(timeLeft)}
                         </span>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm text-slate-400">Focus sessions</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Focus sessions</p>
                       <motion.div
                         className="flex items-center gap-2 text-lg font-semibold"
                         animate={recentCompleted ? { scale: [1, 1.12, 1] } : { scale: 1 }}
@@ -594,7 +594,7 @@ export default function ProductivityPage() {
                         <Flame className="w-5 h-5 text-orange-300" />
                         {focusSessions} completed
                       </motion.div>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Focus minutes today: {focusMinutes} min
                       </p>
                     </div>
@@ -610,18 +610,18 @@ export default function ProductivityPage() {
                     </button>
                     <button
                       onClick={resetTimer}
-                      className="px-5 py-3 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center gap-2"
+                      className="px-5 py-3 rounded-2xl bg-slate-100/80 border border-slate-400/80 text-slate-900 flex items-center gap-2 dark:bg-white/10 dark:border-white/10 dark:text-white"
                     >
                       <RotateCcw className="w-4 h-4" />
                       Reset
                     </button>
                     <form
                       onSubmit={applyManualTime}
-                      className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
+                      className="flex items-center gap-2 bg-slate-100/80 border border-slate-400/80 rounded-2xl px-3 py-2 dark:bg-white/5 dark:border-white/10"
                     >
                       <label
                         htmlFor="pomodoro-minutes"
-                        className="text-xs text-slate-300"
+                        className="text-xs text-slate-700 dark:text-slate-300"
                       >
                         Minutes
                       </label>
@@ -632,7 +632,7 @@ export default function ProductivityPage() {
                         max="180"
                         value={manualMinutes}
                         onChange={(event) => setManualMinutes(event.target.value)}
-                        className="w-16 rounded-lg bg-transparent border border-white/10 px-2 py-1 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+                        className="w-16 rounded-lg bg-transparent border border-slate-400/80 px-2 py-1 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 dark:border-white/10 dark:text-white dark:placeholder:text-slate-400"
                       />
                       <button
                         type="submit"
@@ -643,16 +643,16 @@ export default function ProductivityPage() {
                     </form>
                   </div>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-3 text-xs text-slate-300">
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
+                <div className="mt-6 flex flex-wrap gap-3 text-xs text-slate-700 dark:text-slate-300">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/5 dark:border-white/10 dark:text-white">
                     <FlameIcon className="w-4 h-4 text-orange-300" />
                     Streak: {Math.max(1, focusSessions)} days
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/5 dark:border-white/10 dark:text-white">
                     <Clock className="w-4 h-4 text-cyan-300" />
                     Next break in {Math.ceil(timeLeft / 60)} min
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/5 dark:border-white/10 dark:text-white">
                     {ambientMode === "focus" ? (
                       <Sun className="w-4 h-4 text-amber-300" />
                     ) : (
@@ -664,7 +664,7 @@ export default function ProductivityPage() {
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
+                className="bg-slate-100/90 border border-slate-400/80 dark:bg-white/5 dark:border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -673,31 +673,31 @@ export default function ProductivityPage() {
               >
                 <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
                   <div>
-                    <p className="text-sm text-slate-400">Calendar Pulse</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Calendar Pulse</p>
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <CalendarDays className="w-5 h-5 text-purple-300" />
                       {monthLabel}
                     </h2>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {selectedDateLabel} - {agendaSummaryForSelectedDate.total} items
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setMonthOffset((prev) => prev - 1)}
-                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
+                      className="px-3 py-2 rounded-xl bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
                     >
                       Prev
                     </button>
                     <button
                       onClick={() => setMonthOffset(0)}
-                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
+                      className="px-3 py-2 rounded-xl bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
                     >
                       Today
                     </button>
                     <button
                       onClick={() => setMonthOffset((prev) => prev + 1)}
-                      className="px-3 py-2 rounded-xl bg-white/10 border border-white/10"
+                      className="px-3 py-2 rounded-xl bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
                     >
                       Next
                     </button>
@@ -710,8 +710,8 @@ export default function ProductivityPage() {
                     onClick={() => setCalendarFilter("all")}
                     className={`px-3 py-1 rounded-full text-xs border transition ${
                       calendarFilter === "all"
-                        ? "bg-white/10 border-white/20 text-white"
-                        : "border-white/10 text-slate-300"
+                        ? "bg-slate-100/80 dark:bg-white/10 border-slate-400/80 dark:border-white/20 text-slate-900 dark:text-white"
+                        : "border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300"
                     }`}
                   >
                     All
@@ -723,8 +723,8 @@ export default function ProductivityPage() {
                       onClick={() => setCalendarFilter(block.label)}
                       className={`px-3 py-1 rounded-full text-xs border transition ${
                         calendarFilter === block.label
-                          ? "bg-white/10 border-white/20 text-white"
-                          : "border-white/10 text-slate-300"
+                          ? "bg-slate-100/80 dark:bg-white/10 border-slate-400/80 dark:border-white/20 text-slate-900 dark:text-white"
+                          : "border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300"
                       }`}
                     >
                       <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
@@ -733,7 +733,7 @@ export default function ProductivityPage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-7 gap-2 text-xs text-slate-400 mb-3">
+                <div className="grid grid-cols-7 gap-2 text-xs text-slate-600 dark:text-slate-400 mb-3">
                   {WEEK_DAYS.map((day) => (
                     <div key={day} className="text-center">
                       {day}
@@ -762,22 +762,22 @@ export default function ProductivityPage() {
                         key={key}
                         type="button"
                         onClick={() => setSelectedDateKey(key)}
-                        className={`h-16 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:bg-cyan-500/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
+                        className={`h-16 rounded-2xl border border-slate-400/80 dark:border-white/5 flex flex-col items-center justify-center text-sm transition hover:border-cyan-400/40 hover:bg-cyan-500/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/40 ${
                           isToday
-                            ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-100"
+                            ? "bg-cyan-500/25 border-cyan-400/50 text-cyan-900 dark:text-cyan-100"
                             : isSelected
-                            ? "bg-purple-500/20 border-purple-400/40 text-purple-100"
-                            : "bg-white/5 text-slate-200"
+                            ? "bg-purple-500/25 border-purple-400/50 text-purple-900 dark:text-purple-100"
+                            : "bg-slate-100/80 text-slate-900 dark:bg-white/5 dark:text-slate-200"
                         }`}
                       >
                         <span className="font-semibold">{date.getDate()}</span>
                         <div className="mt-1 flex items-center gap-1">
                           {agendaCountForDay ? (
-                            <span className="text-[11px] text-slate-400">
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
                               {agendaCountForDay} items
                             </span>
                           ) : (
-                            <span className="text-[11px] text-slate-400">Focus</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400">Focus</span>
                           )}
                           <div className="flex gap-1">
                             {TIME_BLOCKS.filter((block) => {
@@ -801,7 +801,7 @@ export default function ProductivityPage() {
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl"
+                className="bg-slate-100/90 border border-slate-400/80 dark:bg-white/5 dark:border-white/10 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -810,61 +810,61 @@ export default function ProductivityPage() {
               >
                 <div className="flex items-center justify-between gap-4 mb-6">
                   <div>
-                    <p className="text-sm text-slate-400">Focus Snapshot</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Focus Snapshot</p>
                     <h3 className="text-2xl font-semibold flex items-center gap-2">
                       <Flame className="w-5 h-5 text-orange-300" />
                       Today at a glance
                     </h3>
                   </div>
-                  <div className="px-3 py-1 rounded-full text-xs border border-white/10 text-slate-300">
+                  <div className="px-3 py-1 rounded-full text-xs border border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300">
                     {selectedDateLabel}
                   </div>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-slate-400">Agenda items</p>
-                    <div className="mt-2 text-2xl font-semibold text-cyan-200">
+                  <div className="rounded-2xl border border-slate-400/80 dark:border-white/10 bg-slate-100/80 dark:bg-white/5 p-4 shadow-sm shadow-slate-900/5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Agenda items</p>
+                    <div className="mt-2 text-2xl font-semibold text-cyan-600">
                       {agendaCount}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">Scheduled today</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Scheduled today</p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-slate-400">Task completion</p>
+                  <div className="rounded-2xl border border-slate-400/80 dark:border-white/10 bg-slate-100/80 dark:bg-white/5 p-4 shadow-sm shadow-slate-900/5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Task completion</p>
                     <div className="mt-2 text-2xl font-semibold text-emerald-200">
                       {taskCompletion}%
                     </div>
-                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                       <div
                         className="h-full bg-linear-to-r from-emerald-400 to-cyan-400"
                         style={{ width: `${taskCompletion}%` }}
                       />
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-xs text-slate-400">Soundscape</p>
+                  <div className="rounded-2xl border border-slate-400/80 dark:border-white/10 bg-slate-100/80 dark:bg-white/5 p-4 shadow-sm shadow-slate-900/5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Soundscape</p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
-                      <SoundscapeIcon className="w-4 h-4 text-purple-200" />
+                      <SoundscapeIcon className="w-4 h-4 text-purple-500" />
                       {soundscapeOn ? "On" : "Off"}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {soundscapeOn ? soundscape : "Silent focus"}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs text-slate-400">Next focus block</p>
+                <div className="mt-6 rounded-2xl border border-slate-400/80 dark:border-white/10 bg-slate-100/80 dark:bg-white/5 p-4 shadow-sm shadow-slate-900/5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Next focus block</p>
                   {nextFocusBlock ? (
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                       <Timer className="w-5 h-5 text-cyan-300" />
                       {nextFocusBlock.text}
-                      <span className="text-sm text-slate-400">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
                         {nextFocusBlock.time}
                       </span>
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm text-slate-400">
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                       Add a focus item to see it here.
                     </p>
                   )}
@@ -874,7 +874,7 @@ export default function ProductivityPage() {
 
             <div className="space-y-8">
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
+                className="bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -890,7 +890,7 @@ export default function ProductivityPage() {
                     value={taskInput}
                     onChange={(event) => setTaskInput(event.target.value)}
                     placeholder="Add a new task"
-                    className="flex-1 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
+                    className="flex-1 rounded-xl bg-slate-100/80 dark:bg-white/10 border border-slate-400/80 dark:border-white/10 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/40"
                   />
                   <div className="flex items-center gap-2">
                     <div className="flex flex-wrap gap-2">
@@ -901,7 +901,7 @@ export default function ProductivityPage() {
                           onClick={() => setTaskPriority(priority.value)}
                           className={`px-3 py-1 rounded-full text-xs border transition ${priority.color} ${
                             taskPriority === priority.value
-                              ? "bg-white/10"
+                              ? "bg-slate-100/80 dark:bg-white/10"
                               : "bg-transparent"
                           }`}
                         >
@@ -918,11 +918,11 @@ export default function ProductivityPage() {
                   </div>
                 </form>
                 <div className="mb-4">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
+                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>Completion</span>
                     <span>{taskCompletion}%</span>
                   </div>
-                  <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                     <div
                       className="h-full bg-linear-to-r from-emerald-400 to-cyan-400"
                       style={{ width: `${taskCompletion}%` }}
@@ -933,13 +933,13 @@ export default function ProductivityPage() {
                   {tasks.map((task, index) => (
                     <div
                       key={task.id}
-                      className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
+                      className="flex items-center justify-between gap-3 bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-2xl px-3 py-2 shadow-sm shadow-slate-900/5" 
                     >
                       <div className="flex items-center gap-2 text-sm">
                         <button
                           onClick={() => toggleTask(task.id)}
                           className={`flex items-center gap-2 ${
-                            task.done ? "text-slate-500 line-through" : "text-slate-200"
+                            task.done ? "text-slate-500 line-through" : "text-slate-900 dark:text-slate-200"
                           }`}
                         >
                           <CheckCircle2
@@ -952,24 +952,24 @@ export default function ProductivityPage() {
                         <span
                           className={`ml-2 px-2 py-0.5 rounded-full border text-[10px] uppercase ${
                             PRIORITIES.find((priority) => priority.value === task.priority)?.color ||
-                            "border-white/20 text-slate-300"
+                            "border-slate-400/80 dark:border-white/20 text-slate-700 dark:text-slate-300"
                           }`}
                         >
                           {task.priority}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-slate-400">
+                      <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                         <button
                           onClick={() => moveTask(task.id, -1)}
                           disabled={index === 0}
-                          className="p-1 rounded-lg hover:text-white disabled:opacity-40"
+                          className="p-1 rounded-lg hover:text-slate-900 dark:text-white disabled:opacity-40"
                         >
                           <ChevronUp className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => moveTask(task.id, 1)}
                           disabled={index === tasks.length - 1}
-                          className="p-1 rounded-lg hover:text-white disabled:opacity-40"
+                          className="p-1 rounded-lg hover:text-slate-900 dark:text-white disabled:opacity-40"
                         >
                           <ChevronDown className="w-3 h-3" />
                         </button>
@@ -986,7 +986,7 @@ export default function ProductivityPage() {
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-4"
+                className="bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-4 shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -998,37 +998,37 @@ export default function ProductivityPage() {
                   <h3 className="text-xl font-semibold">Focus Insights</h3>
                 </div>
                 <div className="space-y-4">
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                    <p className="text-sm text-slate-400">Energy level</p>
-                    <div className="h-2 mt-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="bg-slate-100/80 dark:bg-white/5 rounded-2xl p-4 border border-slate-400/80 dark:border-white/10">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Energy level</p>
+                    <div className="h-2 mt-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                       <div className="h-full w-3/4 bg-linear-to-r from-cyan-400 to-purple-400" />
                     </div>
                   </div>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                    <p className="text-sm text-slate-400">Deep work streak</p>
+                  <div className="bg-slate-100/80 dark:bg-white/5 rounded-2xl p-4 border border-slate-400/80 dark:border-white/10">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Deep work streak</p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                       <Flame className="w-5 h-5 text-orange-300" />
                       6 days strong
                     </div>
                   </div>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                    <p className="text-sm text-slate-400">Next focus block</p>
+                  <div className="bg-slate-100/80 dark:bg-white/5 rounded-2xl p-4 border border-slate-400/80 dark:border-white/10">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Next focus block</p>
                     {nextFocusBlock ? (
                       <div className="mt-2 flex items-center gap-2 text-lg font-semibold">
                         <Timer className="w-5 h-5 text-cyan-300" />
                         {nextFocusBlock.text}
-                        <span className="text-sm text-slate-400">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
                           {nextFocusBlock.time}
                         </span>
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-slate-400">
+                      <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                         No focus blocks scheduled yet.
                       </p>
                     )}
                   </div>
-                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                    <p className="text-sm text-slate-400">Soundscape</p>
+                  <div className="bg-slate-100/80 dark:bg-white/5 rounded-2xl p-4 border border-slate-400/80 dark:border-white/10">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Soundscape</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {SOUNDSCAPES.map((item) => {
                         const Icon = item.icon;
@@ -1039,8 +1039,8 @@ export default function ProductivityPage() {
                             onClick={() => setSoundscape(item.value)}
                             className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 ${
                               soundscape === item.value
-                                ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-                                : "border-white/10 text-slate-300"
+                                ? "border-cyan-500/40 bg-cyan-600 text-white dark:border-cyan-300/40 dark:bg-white/10 dark:text-cyan-100"
+                                : "border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300"
                             }`}
                           >
                             <Icon className="w-3 h-3" />
@@ -1052,8 +1052,8 @@ export default function ProductivityPage() {
                         onClick={() => setSoundscapeOn((prev) => !prev)}
                         className={`px-3 py-2 rounded-xl border text-xs flex items-center gap-2 ${
                           soundscapeOn
-                            ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
-                            : "border-white/10 text-slate-300"
+                            ? "border-emerald-500/50 bg-emerald-600 text-white dark:border-emerald-300/40 dark:bg-white/10 dark:text-emerald-100"
+                            : "border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         {soundscapeOn ? "On" : "Off"}
@@ -1061,23 +1061,23 @@ export default function ProductivityPage() {
                       </button>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <div className="h-2 flex-1 rounded-full bg-white/10 overflow-hidden">
+                      <div className="h-2 flex-1 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                         <div
                           className={`h-full w-2/3 ${
                             soundscapeOn
                               ? "bg-linear-to-r from-cyan-400 to-purple-400"
-                              : "bg-white/10"
+                              : "bg-slate-100/80 dark:bg-white/10"
                           }`}
                         />
                       </div>
-                      <span className="text-xs text-slate-400">EQ</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">EQ</span>
                     </div>
                   </div>
                 </div>
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-3"
+                className="bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-3xl p-6 backdrop-blur-xl space-y-3 shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1088,7 +1088,7 @@ export default function ProductivityPage() {
                   <Sparkles className="w-5 h-5 text-purple-300" />
                   Creative Boosts
                 </h3>
-                <p className="text-sm text-slate-300">
+                <p className="text-sm text-slate-700 dark:text-slate-300">
                   Try a 2-minute stretch, write one win, and reset your focus
                   before the next block.
                 </p>
@@ -1104,7 +1104,7 @@ export default function ProductivityPage() {
                         setIsRunning(true);
                         window.scrollTo({ top: 0, behavior: "smooth" });
                       }}
-                      className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/10 hover:bg-white/20 transition-colors cursor-pointer text-white"
+                      className="px-3 py-1 rounded-full text-xs bg-slate-100/80 border border-slate-400/80 hover:bg-slate-200 dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white transition-colors cursor-pointer"
                     >
                       {item}
                     </button>
@@ -1113,7 +1113,7 @@ export default function ProductivityPage() {
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
+                className="bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-3xl p-6 backdrop-blur-xl shadow-sm shadow-slate-900/5 hover:shadow-md"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1124,7 +1124,7 @@ export default function ProductivityPage() {
                   <CalendarDays className="w-5 h-5 text-purple-300" />
                   <div>
                     <h3 className="text-xl font-semibold">Agenda</h3>
-                    <p className="text-sm text-slate-400">{selectedDateLabel}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{selectedDateLabel}</p>
                   </div>
                 </div>
                 <form onSubmit={addAgendaItem} className="flex flex-col gap-3 mb-4">
@@ -1132,7 +1132,7 @@ export default function ProductivityPage() {
                     value={agendaInput}
                     onChange={(event) => setAgendaInput(event.target.value)}
                     placeholder="Add agenda item"
-                    className="flex-1 rounded-xl bg-white/10 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400/40"
+                    className="flex-1 rounded-xl bg-slate-100/80 border border-slate-400/80 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-400/40 dark:bg-white/10 dark:border-white/10 dark:text-white dark:placeholder:text-slate-400"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     {TIME_BLOCKS.map((block) => (
@@ -1142,8 +1142,8 @@ export default function ProductivityPage() {
                         onClick={() => setAgendaLabel(block.label)}
                         className={`px-3 py-1 rounded-full text-xs border transition ${
                           agendaLabel === block.label
-                            ? "bg-white/10 border-white/20 text-white"
-                            : "border-white/10 text-slate-300"
+                            ? "bg-slate-100/80 dark:bg-white/10 border-slate-400/80 dark:border-white/20 text-slate-900 dark:text-white"
+                            : "border-slate-400/80 dark:border-white/10 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
@@ -1160,32 +1160,32 @@ export default function ProductivityPage() {
                 </form>
                 <div className="space-y-3">
                   {agendaForSelectedDate.length === 0 ? (
-                    <div className="text-sm text-slate-400">
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
                       No agenda yet. Add a focus item for this day.
                     </div>
                   ) : (
                     agendaForSelectedDate.map((item, index) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-2xl px-3 py-2"
+                        className="flex items-center justify-between gap-3 bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-2xl px-3 py-2"
                       >
-                        <div className="text-sm text-slate-200">
+                        <div className="text-sm text-slate-900 dark:text-slate-200">
                           <p className="font-medium">{item.text}</p>
-                          <p className="text-xs text-slate-400">{item.time}</p>
-                          <p className="text-xs text-purple-200">{item.label}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{item.time}</p>
+                          <p className="text-xs text-purple-600">{item.label}</p>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                           <button
                             onClick={() => moveAgendaItem(item.id, -1)}
                             disabled={index === 0}
-                            className="p-1 rounded-lg hover:text-white disabled:opacity-40"
+                            className="p-1 rounded-lg hover:text-slate-900 dark:text-white disabled:opacity-40"
                           >
                             <ChevronUp className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => moveAgendaItem(item.id, 1)}
                             disabled={index === agendaForSelectedDate.length - 1}
-                            className="p-1 rounded-lg hover:text-white disabled:opacity-40"
+                            className="p-1 rounded-lg hover:text-slate-900 dark:text-white disabled:opacity-40"
                           >
                             <ChevronDown className="w-3 h-3" />
                           </button>
@@ -1203,7 +1203,7 @@ export default function ProductivityPage() {
               </motion.div>
 
               <motion.div
-                className="bg-white/5 border border-white/10 rounded-3xl p-6 backdrop-blur-xl"
+                className="bg-slate-100/80 dark:bg-white/5 border border-slate-400/80 dark:border-white/10 rounded-3xl p-6 backdrop-blur-xl"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -1216,24 +1216,24 @@ export default function ProductivityPage() {
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Tasks completed</span>
-                    <span className="text-slate-200">
+                    <span className="text-slate-500 dark:text-slate-400">Tasks completed</span>
+                    <span className="text-slate-900 dark:text-slate-200">
                       {completedTasks} / {tasks.length}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-2 rounded-full bg-slate-100/80 dark:bg-white/10 overflow-hidden">
                     <div
                       className="h-full bg-linear-to-r from-cyan-400 to-purple-400"
                       style={{ width: `${taskCompletion}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Agenda items</span>
-                    <span className="text-slate-200">{agendaCount}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Agenda items</span>
+                    <span className="text-slate-900 dark:text-slate-200">{agendaCount}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">Focus minutes</span>
-                    <span className="text-slate-200">{focusMinutes} min</span>
+                    <span className="text-slate-500 dark:text-slate-400">Focus minutes</span>
+                    <span className="text-slate-900 dark:text-slate-200">{focusMinutes} min</span>
                   </div>
                 </div>
               </motion.div>
@@ -1257,7 +1257,7 @@ export default function ProductivityPage() {
                   setTaskInput("");
                   setAgendaInput("");
                 }}
-                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
+                className="px-4 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
               >
                 Quick Add Task
               </button>
@@ -1266,7 +1266,7 @@ export default function ProductivityPage() {
                   setShowQuickAdd(false);
                   setAgendaInput("");
                 }}
-                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
+                className="px-4 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
               >
                 Quick Add Agenda
               </button>
@@ -1275,7 +1275,7 @@ export default function ProductivityPage() {
                   setShowQuickAdd(false);
                   setIsRunning(true);
                 }}
-                className="px-4 py-2 rounded-full bg-white/10 border border-white/10 text-sm"
+                className="px-4 py-2 rounded-full bg-slate-100/80 border border-slate-400/80 text-slate-900 dark:bg-white/10 dark:border-white/10 dark:text-white"
               >
                 Start Focus
               </button>
