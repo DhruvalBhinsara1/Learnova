@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 
 /**
  * Cookie utility helpers for writing/deleting client cookies
@@ -46,30 +46,49 @@ export const useAuth = () => {
       setLoading(false);
       return;
     }
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+
+    let unsubscribeSnapshot = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Clean up previous snapshot listener if active
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+
       try {
         if (firebaseUser) {
-          // Get user profile from Firestore
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          setUser(firebaseUser);
 
-          if (userDoc.exists()) {
-            const profileData = userDoc.data();
-            setUser(firebaseUser);
-            setUserProfile(profileData);
+          // Listen to the user profile document in real-time
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          unsubscribeSnapshot = onSnapshot(userDocRef, async (userDoc) => {
+            try {
+              if (userDoc.exists()) {
+                const profileData = userDoc.data();
+                setUserProfile(profileData);
 
-            // Sync auth token and role in cookies
-            const token = await firebaseUser.getIdToken();
-            setCookie("authToken", token, 7);
-            setCookie("userRole", profileData.role, 7);
-          } else {
-            // User exists in Auth but no profile in Firestore
-            setUser(firebaseUser);
-            setUserProfile(null);
-
-            // Clean up cookies if profile is missing
-            deleteCookie("authToken");
-            deleteCookie("userRole");
-          }
+                // Sync auth token and role in cookies
+                const token = await firebaseUser.getIdToken();
+                setCookie("authToken", token, 7);
+                setCookie("userRole", profileData.role, 7);
+              } else {
+                // User exists in Auth but no profile in Firestore yet
+                setUserProfile(null);
+                deleteCookie("authToken");
+                deleteCookie("userRole");
+              }
+              setLoading(false);
+            } catch (snapErr) {
+              console.error("Error in profile snapshot listener:", snapErr);
+              setError(snapErr.message);
+              setLoading(false);
+            }
+          }, (snapError) => {
+            console.warn("Profile snapshot subscription error:", snapError.message);
+            // Handle permission denied or other errors gracefully without locking loading state
+            setLoading(false);
+          });
         } else {
           setUser(null);
           setUserProfile(null);
@@ -89,6 +108,7 @@ export const useAuth = () => {
               console.warn("Failed to clear PWA caches on auth state change:", cacheErr);
             }
           }
+          setLoading(false);
         }
 
         setError(null);
@@ -98,12 +118,16 @@ export const useAuth = () => {
         setUserProfile(null);
         deleteCookie("authToken");
         deleteCookie("userRole");
-      } finally {
         setLoading(false);
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+      }
+    };
   }, []);
 
   /**

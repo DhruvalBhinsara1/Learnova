@@ -4,7 +4,7 @@ import { getUserProfile, initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
 import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError, ForbiddenError, AppError } from "@/lib/errors";
 
@@ -101,7 +101,7 @@ const settingsSchema = z
 export const PATCH = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 100);
   const parsed = settingsSchema.safeParse(body);
 
   if (!parsed.success) {

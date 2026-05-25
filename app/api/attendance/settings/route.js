@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { ValidationError } from "@/lib/errors";
 import { initializeFirebase } from "@/lib/firebase-admin";
@@ -49,7 +49,7 @@ export const POST = withErrorHandler(async (request) => {
 
   initializeFirebase();
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024);
 
   const validation = postSchema.safeParse(body);
   if (!validation.success) {

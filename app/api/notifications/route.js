@@ -1,4 +1,5 @@
 import clientPromise from "@/lib/mongodb";
+import { parseJSON } from "@/lib/error-handler";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function PATCH(request) {
   let body = {};
 
   try {
-    body = await request.json();
+    body = await parseJSON(request, 1024);
   } catch {
     body = {};
   }

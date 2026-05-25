@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { getUserProfileByEmail } from "@/lib/firebase-admin";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireRole } from "@/lib/rbac";
 import { AppError, ValidationError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import { ObjectId } from "mongodb";
@@ -33,7 +33,7 @@ const exceptionUpdateSchema = z.object({
 export const PUT = withErrorHandler(async (request) => {
   const { payload: decodedToken, profile } = await requireRole(request, ["admin", "teacher"]);
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 10);
   
   const validation = exceptionUpdateSchema.safeParse(body);
   if (!validation.success) {
@@ -115,7 +115,7 @@ export const PUT = withErrorHandler(async (request) => {
   if (result.matchedCount === 0) throw new NotFoundError("Exception not found");
 
   console.log(
-    `[Audit Log] Exception ${exceptionId} ${status} by approver UID: ${decodedToken.uid} (${decodedToken.email}, Role: ${profile.role}) at ${new Date().toISOString()}`
+  `[Audit Log] Exception ${exceptionId} ${status} by approver UID: ${decodedToken.uid} (${decodedToken.email}, Role: ${profile.role}) at ${new Date().toISOString()}`
   );
 
   return NextResponse.json({ message: "Exception updated successfully" });

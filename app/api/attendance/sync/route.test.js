@@ -1,4 +1,5 @@
 import { POST, normalizeConfidenceScore } from "./route";
+import { parseJSON } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -30,6 +31,7 @@ jest.mock("next/server", () => ({
 
 jest.mock("@/lib/error-handler", () => ({
   withErrorHandler: (handler) => handler,
+  parseJSON: jest.fn(),
 }));
 
 describe("attendance sync route", () => {
@@ -42,6 +44,19 @@ describe("attendance sync route", () => {
       uid: "user-123",
       email: "auth@example.com",
       name: "Auth Name",
+    });
+
+    parseJSON.mockResolvedValue({
+      records: [
+        {
+          id: 1,
+          userId: "user-123",
+          studentName: "Tampered Name",
+          email: "tampered@example.com",
+          confidenceScore: 85,
+          queuedAt: Date.now(),
+        },
+      ],
     });
 
     getUserProfile.mockResolvedValue({
@@ -67,20 +82,7 @@ describe("attendance sync route", () => {
       collection: jest.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      json: async () => ({
-        records: [
-          {
-            id: 1,
-            userId: "user-123",
-            studentName: "Tampered Name",
-            email: "tampered@example.com",
-            confidenceScore: 85,
-            queuedAt: Date.now(),
-          },
-        ],
-      }),
-    });
+    const response = await POST({});
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -111,6 +113,19 @@ describe("attendance sync route", () => {
       name: "Auth Name",
     });
 
+    parseJSON.mockResolvedValue({
+      records: [
+        {
+          id: 2,
+          userId: "user-123",
+          studentName: "Tampered Name",
+          email: "tampered@example.com",
+          confidenceScore: 0.5,
+          queuedAt: Date.now(),
+        },
+      ],
+    });
+
     getUserProfile.mockResolvedValue(null);
 
     const collectionRef = {
@@ -124,20 +139,7 @@ describe("attendance sync route", () => {
       collection: jest.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      json: async () => ({
-        records: [
-          {
-            id: 2,
-            userId: "user-123",
-            studentName: "Tampered Name",
-            email: "tampered@example.com",
-            confidenceScore: 0.5,
-            queuedAt: Date.now(),
-          },
-        ],
-      }),
-    });
+    const response = await POST({});
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({

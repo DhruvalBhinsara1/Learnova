@@ -80,7 +80,14 @@ export const loginWithEmail = async (email, password, selectedRole) => {
             role: userData.role,
             fullName: userData.fullName || "",
           }),
-        }).catch(() => {});
+        })
+        .then((res) => {
+          if (res.ok) {
+            // Force refresh token so the custom claims are present in the client-side session immediately
+            user.getIdToken(true).catch(() => {});
+          }
+        })
+        .catch(() => {});
       });
 
       return { success: true, userData };
@@ -207,6 +214,8 @@ export const loginWithGoogle = async (
             ...additionalData,
             fullName: nameToUse,
           });
+          // Force refresh the token to immediately acquire the new custom claims (role) on the client side
+          await user.getIdToken(true);
         } catch (profileError) {
           await deleteUser(user).catch(() => {});
           throw profileError;
@@ -249,7 +258,14 @@ export const loginWithGoogle = async (
             role: userData.role,
             fullName: userData.fullName || "",
           }),
-        }).catch(() => {});
+        })
+        .then((res) => {
+          if (res.ok) {
+            // Force refresh token so the custom claims are present in the client-side session immediately
+            user.getIdToken(true).catch(() => {});
+          }
+        })
+        .catch(() => {});
       });
     }
 

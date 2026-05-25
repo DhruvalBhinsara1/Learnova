@@ -1,10 +1,7 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import {
-  authenticateRequest,
-  withErrorHandler,
-} from "@/lib/error-handler";
-import { ValidationError, AppError } from "@/lib/errors";
-import { callGroq, validateGroqBody } from "@/lib/ai/groq";
+import { authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { AppError, ValidationError } from "@/lib/errors";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
@@ -58,8 +55,8 @@ export async function POST(request) {
       );
     }
 
-    // Parse and validate body using shared validator
-    const body = await request.json();
+    // Parse body
+    const body = await parseJSON(request, 1024 * 10);
 
     const validation = groqSchema.safeParse(body);
     if (!validation.success) {
