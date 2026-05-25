@@ -35,6 +35,37 @@ export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
   const [errors, setErrors] = useState({});
+  const [cooldown, setCooldown] = useState(false);
+  const [cooldownTimer, setCooldownTimer] = useState(0);
+
+  useEffect(() => {
+    let interval; // Store interval reference securely
+    const COOLDOWN_MS = 60 * 1000;
+    const lastSubmit = localStorage.getItem('learnova_contact_last_submit');
+    if (lastSubmit) {
+      const elapsed = Date.now() - parseInt(lastSubmit);
+      const remaining = Math.ceil((COOLDOWN_MS - elapsed) / 1000);
+      if (remaining > 0) {
+        setCooldown(true);
+        setCooldownTimer(remaining);
+        interval = setInterval(() => {
+          setCooldownTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              setCooldown(false);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    }
+    
+    // CRITICAL FIX: Cleanup function to destroy the interval on component unmount
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -72,35 +103,72 @@ export default function Contact() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
-    setIsSubmitting(true);
-    setSubmitStatus(null);
+  e.preventDefault();
 
-    try {
-      await emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        { ...formData },
-        process.env.NEXT_PUBLIC_EMAILJS_USER_ID
-      );
+  const COOLDOWN_MS = 60 * 1000;
+  const lastSubmit = localStorage.getItem('learnova_contact_last_submit');
+  if (lastSubmit && Date.now() - parseInt(lastSubmit) < COOLDOWN_MS) {
+    setSubmitStatus({
+      type: 'error',
+      message: `Please wait ${cooldownTimer} seconds before sending another message.`,
+    });
+    return;
+  }
 
-      setSubmitStatus({
-        type: "success",
-        message: "Thank you! Your message has been sent successfully.",
-      });
-      setFormData({ name: "", email: "", company: "", message: "" });
-    } catch (error) {
-      setSubmitStatus({
-        type: "error",
-        message: "Sorry, something went wrong. Please try again later.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  if (!validateForm()) {
+    setSubmitStatus({
+      type: "error",
+      message: "Please fix the highlighted fields before submitting.",
+    });
+    return;
+  }
+
+  setIsSubmitting(true);
+  setSubmitStatus(null);
+
+  try {
+    await emailjs.send(
+      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+      { ...formData },
+      process.env.NEXT_PUBLIC_EMAILJS_USER_ID
+    );
+
+    setSubmitStatus({
+      type: "success",
+      message: "Thank you! Your message has been sent successfully.",
+    });
+
+    setFormData({
+      name: "",
+      email: "",
+      company: "",
+      message: "",
+    });
+
+    localStorage.setItem('learnova_contact_last_submit', Date.now().toString());
+    setCooldown(true);
+    let seconds = 60;
+    setCooldownTimer(seconds);
+    const interval = setInterval(() => {
+      seconds -= 1;
+      setCooldownTimer(seconds);
+      if (seconds === 0) {
+        clearInterval(interval);
+        setCooldown(false);
+      }
+    }, 1000);
+
+    setErrors({});
+  } catch (error) {
+    setSubmitStatus({
+      type: "error",
+      message: "Sorry, something went wrong. Please try again later.",
+    });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const contactInfo = [
     {
@@ -182,9 +250,9 @@ export default function Contact() {
         {/* Hero Section */}
         <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-accent/20 to-purple-500/20 rounded-full border border-accent/30 backdrop-blur-sm mb-6">
-              <MessageCircle className="w-5 h-5 text-accent-foreground mr-2" />
-              <span className="text-accent-foreground font-medium">Get in Touch</span>
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-accent/10 to-purple-500/10 dark:from-accent/20 dark:to-purple-500/20 rounded-full border border-accent/20 dark:border-accent/30 backdrop-blur-sm mb-6">
+              <MessageCircle className="w-5 h-5 text-accent dark:text-accent-foreground mr-2" />
+              <span className="text-accent dark:text-accent-foreground font-medium">Get in Touch</span>
             </div>
 
             <h1 className="text-5xl md:text-6xl font-bold text-foreground dark:text-white mb-6">
@@ -220,10 +288,11 @@ export default function Contact() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="block text-foreground font-medium">
+                        <label htmlFor="contact-name" className="block text-foreground font-medium">
                           Full Name *
                         </label>
                         <input
+                          id="contact-name"
                           type="text"
                           name="name"
                           value={formData.name}
@@ -239,10 +308,11 @@ export default function Contact() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-foreground font-medium">
+                        <label htmlFor="contact-email" className="block text-foreground font-medium">
                           Email Address *
                         </label>
                         <input
+                          id="contact-email"
                           type="email"
                           name="email"
                           value={formData.email}
@@ -259,10 +329,11 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-foreground font-medium">
+                      <label htmlFor="contact-company" className="block text-foreground font-medium">
                         Institution/Company
                       </label>
                       <input
+                        id="contact-company"
                         type="text"
                         name="company"
                         value={formData.company}
@@ -273,10 +344,11 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-foreground font-medium">
+                      <label htmlFor="contact-message" className="block text-foreground font-medium">
                         Message *
                       </label>
                       <textarea
+                        id="contact-message"
                         name="message"
                         value={formData.message}
                         onChange={handleInputChange}
@@ -310,13 +382,18 @@ export default function Contact() {
 
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="group w-full bg-gradient-to-r from-accent to-purple-500 text-foreground py-4 px-6 rounded-xl font-semibold hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                      disabled={isSubmitting || cooldown}
+                      className="group w-full bg-gradient-to-r from-accent to-purple-500 text-white py-4 px-6 rounded-xl font-semibold hover:shadow-xl hover:shadow-accent/25 transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                     >
                       {isSubmitting ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           Sending...
+                        </>
+                      ) : cooldown ? (
+                        <>
+                          <Clock className="w-5 h-5" />
+                          Please wait {cooldownTimer}s
                         </>
                       ) : (
                         <>

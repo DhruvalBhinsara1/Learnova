@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { toast } from "react-hot-toast";
+import React, { useState, useEffect, useCallback } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,7 +58,7 @@ import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import SkeletonCard from "@/components/ui/SkeletonCard";
 import AttendanceAnalytics from "@/components/dashboard/AttendanceAnalytics";
 import { db } from "@/lib/firebaseConfig";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 const AttendanceTrendsChart = dynamic(
   () => import("@/components/charts/AttendanceTrendsChart"),
@@ -74,7 +75,7 @@ const TeacherDashboard = () => {
   const [attendanceWindow, setAttendanceWindow] = useState(false);
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [passcodeGenerated, setPasscodeGenerated] = useState(false);
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [attendanceStats, setAttendanceStats] = useState({
     totalStudents: 0,
     presentToday: 0,
@@ -83,26 +84,44 @@ const TeacherDashboard = () => {
     averageAttendance: 0,
   });
 
-  // 1. Move the function OUTSIDE the useEffect so it can be reused by the button
-  const fetchTodayAttendanceStats = async () => {
+  const fetchTodayAttendanceStats = useCallback(async () => {
     try {
       const today = new Date().toISOString().slice(0, 10);
+
       const attendanceQuery = query(
         collection(db, "attendance_records"),
         where("date", "==", today),
       );
+
       const snapshot = await getDocs(attendanceQuery);
-      const records = snapshot.docs.map((doc) => doc.data());
+
+      const records = snapshot.docs.map((doc) =>
+        doc.data(),
+      );
 
       const presentToday = records.filter(
-        (r) => r.status === "present" || !r.status,
+        (r) =>
+          r.status === "present" ||
+          !r.status,
       ).length;
-      const lateToday = records.filter((r) => r.status === "late").length;
-      const absentToday = records.filter((r) => r.status === "absent").length;
+
+      const lateToday = records.filter(
+        (r) => r.status === "late",
+      ).length;
+
+      const absentToday = records.filter(
+        (r) => r.status === "absent",
+      ).length;
+
       const totalStudents = records.length;
+
       const averageAttendance =
         totalStudents > 0
-          ? Math.round(((presentToday + lateToday) / totalStudents) * 1000) / 10
+          ? Math.round(
+              ((presentToday + lateToday) /
+                totalStudents) *
+                1000,
+            ) / 10
           : 0;
 
       setAttendanceStats({
@@ -113,14 +132,17 @@ const TeacherDashboard = () => {
         averageAttendance,
       });
     } catch (err) {
-      console.error("Failed to fetch today's attendance stats:", err);
+      console.error(
+        "Failed to fetch today's attendance stats:",
+        err,
+      );
     }
-  };
+  }, []);
 
-  // 2. Keep the useEffect to fetch the data when the page first loads
   useEffect(() => {
     fetchTodayAttendanceStats();
-  }, []);
+  }, [fetchTodayAttendanceStats]);
+    
   const [todayClasses, setTodayClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
   const [attendanceRequests, setAttendanceRequests] = useState([]);
@@ -135,154 +157,149 @@ const TeacherDashboard = () => {
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState(null);
 
-  // Mock teacher data
-  const [teacher] = useState({
-    name: "Dr. Sarah Wilson",
-    id: "TCH001",
-    email: "sarah.wilson@learnova.edu",
-    department: "Computer Science",
-    designation: "Associate Professor",
-    subjects: ["Data Structures", "Web Development", "Database Systems"],
+  // Dynamic teacher data
+  const [teacher, setTeacher] = useState({
+    name: "Loading...",
+    id: "",
+    email: "",
+    department: "",
+    designation: "Teacher",
+    subjects: [],
     avatar: null,
   });
 
-  // Mock class schedule
-  const weeklySchedule = {
-    Monday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Tuesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-    ],
-    Wednesday: [
-      {
-        time: "09:00-10:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-      {
-        time: "14:00-15:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-    Thursday: [
-      {
-        time: "09:00-10:30",
-        subject: "Database Systems",
-        room: "Lab-2",
-        students: 38,
-        semester: "5th",
-        section: "A",
-      },
-      {
-        time: "11:00-12:30",
-        subject: "Web Development",
-        room: "Lab-3",
-        students: 42,
-        semester: "6th",
-        section: "B",
-      },
-    ],
-    Friday: [
-      {
-        time: "09:00-10:30",
-        subject: "Data Structures",
-        room: "Lab-1",
-        students: 45,
-        semester: "4th",
-        section: "A",
-      },
-    ],
-  };
+  const [weeklySchedule, setWeeklySchedule] = useState({});
+  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
 
-  // Mock attendance data
-  const studentAttendanceData = [
-    {
-      id: 1,
-      name: "Alex Johnson",
-      rollNo: "CS21B1001",
-      status: "present",
-      time: "09:02",
-      confidence: 98,
-    },
-    {
-      id: 2,
-      name: "Emma Davis",
-      rollNo: "CS21B1002",
-      status: "present",
-      time: "09:01",
-      confidence: 95,
-    },
-    {
-      id: 3,
-      name: "Michael Chen",
-      rollNo: "CS21B1003",
-      status: "late",
-      time: "09:08",
-      confidence: 92,
-    },
-    {
-      id: 4,
-      name: "Sarah Wilson",
-      rollNo: "CS21B1004",
-      status: "absent",
-      time: "--",
-      confidence: 0,
-    },
-    {
-      id: 5,
-      name: "David Kumar",
-      rollNo: "CS21B1005",
-      status: "present",
-      time: "09:03",
-      confidence: 97,
-    },
-  ];
+  // Fetch Teacher Profile & Schedule
+  useEffect(() => {
+    if (userProfile) {
+      setTeacher({
+        name: userProfile.displayName || userProfile.name || userProfile.firstName + " " + userProfile.lastName || "Teacher",
+        id: userProfile.uid || user?.uid || "TCH001",
+        email: userProfile.email || user?.email || "",
+        department: userProfile.department || "General",
+        designation: userProfile.designation || "Teacher",
+        subjects: userProfile.subjects || [],
+        avatar: userProfile.avatar || null,
+      });
+    }
+
+    const fetchSchedule = async () => {
+      if (!user) return;
+      try {
+        const scheduleRef = collection(db, "schedules");
+        const q = query(scheduleRef, where("teacherId", "==", user.uid));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          if (docData.weeklySchedule) {
+            setWeeklySchedule(docData.weeklySchedule);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching schedule, falling back to mock:", error);
+      }
+      
+      // Fallback Mock Schedule
+      setWeeklySchedule({
+        Monday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Tuesday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+          { time: "11:00-12:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+        ],
+        Wednesday: [
+          { time: "09:00-10:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+          { time: "14:00-15:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+        Thursday: [
+          { time: "09:00-10:30", subject: "Database Systems", room: "Lab-2", students: 38, semester: "5th", section: "A" },
+          { time: "11:00-12:30", subject: "Web Development", room: "Lab-3", students: 42, semester: "6th", section: "B" },
+        ],
+        Friday: [
+          { time: "09:00-10:30", subject: "Data Structures", room: "Lab-1", students: 45, semester: "4th", section: "A" },
+        ],
+      });
+    };
+    
+    fetchSchedule();
+  }, [user, userProfile]);
+
+  // Fetch Active Class Student Roster
+  useEffect(() => {
+    if (!user) return;
+    
+    let unsubscribe = () => {};
+
+    const fetchStudentsAndAttendance = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const qStudents = query(usersRef, where("role", "==", "student"));
+        const studentDocs = await getDocs(qStudents);
+        
+        const studentsList = studentDocs.docs.map(doc => ({
+          id: doc.id,
+          name: doc.data().displayName || doc.data().name || `${doc.data().firstName || ""} ${doc.data().lastName || ""}`.trim() || "Unknown",
+          rollNo: doc.data().rollNo || doc.data().studentId || "N/A",
+          email: doc.data().email,
+        }));
+
+        const today = new Date().toISOString().slice(0, 10);
+        const attendanceQuery = query(
+          collection(db, "attendance_records"),
+          where("date", "==", today)
+        );
+
+        unsubscribe = onSnapshot(attendanceQuery, (snapshot) => {
+          const attendanceMap = new Map();
+          snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.userId) attendanceMap.set(data.userId, data);
+            else if (data.email) attendanceMap.set(data.email, data);
+          });
+
+          const mergedRoster = studentsList.map((student, index) => {
+            const record = attendanceMap.get(student.id) || attendanceMap.get(student.email);
+            return {
+              id: student.id || index,
+              name: student.name,
+              rollNo: student.rollNo,
+              status: record ? (record.status || "present") : "absent",
+              time: record && record.timestamp ? new Date(record.timestamp.toDate ? record.timestamp.toDate() : record.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "--",
+              confidence: record ? (record.confidenceScore ? Math.round(record.confidenceScore * 100) : 100) : 0,
+            };
+          });
+
+          mergedRoster.sort((a, b) => a.name.localeCompare(b.name));
+          
+          if (mergedRoster.length > 0) {
+            setStudentAttendanceData(mergedRoster);
+          } else {
+             // Fallback to mock data if there are no registered students at all in the DB
+             setStudentAttendanceData([
+               { id: 1, name: "Alex Johnson", rollNo: "CS21B1001", status: "present", time: "09:02", confidence: 98 },
+               { id: 2, name: "Emma Davis", rollNo: "CS21B1002", status: "present", time: "09:01", confidence: 95 },
+               { id: 3, name: "Michael Chen", rollNo: "CS21B1003", status: "late", time: "09:08", confidence: 92 },
+               { id: 4, name: "Sarah Wilson", rollNo: "CS21B1004", status: "absent", time: "--", confidence: 0 },
+               { id: 5, name: "David Kumar", rollNo: "CS21B1005", status: "present", time: "09:03", confidence: 97 },
+             ]);
+          }
+        });
+
+      } catch (error) {
+        console.error("Error fetching students for roster:", error);
+      }
+    };
+    
+    fetchStudentsAndAttendance();
+
+    return () => unsubscribe();
+  }, [user]);
 
   const fetchAllRequests = async () => {
     if (!user) return;
@@ -419,7 +436,7 @@ const TeacherDashboard = () => {
         ),
       );
     } catch (error) {
-      alert("Failed to update request. Please try again.");
+      toast.error("Failed to update request. Please try again.");
     }
   };
 
@@ -428,7 +445,7 @@ const TeacherDashboard = () => {
       setLoading(false);
     }, 1500);
 
-    const interval = setInterval(() => {
+    const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now);
 
@@ -457,7 +474,7 @@ const TeacherDashboard = () => {
     }, 1000);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(timer);
       clearTimeout(loadingTimer);
     };
   }, []);
@@ -530,7 +547,7 @@ const TeacherDashboard = () => {
               <div className="text-sm text-gray-400">Window closes in</div>
               <div className="text-white font-semibold">
                 {10 - currentTime.getMinutes()}:
-                {String(currentTime.getSeconds()).padStart(2, "0")} min
+                {String(currentTime.getSeconds() === 0 ? 0 : 60 - currentTime.getSeconds()).padStart(2, "0")} min
               </div>
             </div>
           </div>
@@ -559,6 +576,7 @@ const TeacherDashboard = () => {
                 </div>
                 <button
                   onClick={copyPasscode}
+                  aria-label="Copy passcode"
                   className="bg-white/10 hover:bg-white/20 border border-white/20 text-white p-3 rounded-lg transition-colors"
                 >
                   {copied ? (
@@ -582,11 +600,8 @@ const TeacherDashboard = () => {
               <h2 className="text-2xl font-bold text-white">
                 Today's Attendance Overview
               </h2>
-              <button 
-                onClick={fetchTodayAttendanceStats} 
-                className="text-accent hover:text-accent/80 transition-colors active:scale-95"
-              >
-                <RefreshCw className="w-5 h-5 hover:animate-spin" />
+              <button aria-label="Refresh attendance" className="text-accent hover:text-accent/80 transition-colors">
+                <RefreshCw className="w-5 h-5" />
               </button>
             </div>
 

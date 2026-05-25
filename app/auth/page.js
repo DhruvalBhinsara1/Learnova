@@ -289,7 +289,7 @@ function AuthPageContent() {
 
               {/* Right Side - Hero Content */}
               <div className="order-1 lg:order-2">
-                <HeroSection />
+                <HeroSection selectedRole={selectedRole} />
               </div>
             </div>
           )}

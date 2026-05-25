@@ -2,7 +2,7 @@
 
 import { Sparkles, Shield, Zap } from "lucide-react";
 
-export default function HeroSection() {
+export default function HeroSection({ selectedRole }) {
   return (
     <div>
       {/* Hero Content */}
@@ -23,7 +23,7 @@ export default function HeroSection() {
 
         {/* Subtitle */}
         <p className="text-muted-foreground text-lg max-w-2xl mt-6">
-          Join thousands of professionals who trust our platform for secure
+          Join thousands of {selectedRole == "student"? "students": "professionals"} who trust our platform for secure
           attendance management and seamless academic workflows.
         </p>
 

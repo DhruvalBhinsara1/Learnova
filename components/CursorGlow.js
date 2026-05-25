@@ -4,12 +4,15 @@ import { useEffect } from "react";
 
 export default function CursorGlow() {
   useEffect(() => {
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+    if (isTouchDevice) return;
     const glow = document.getElementById("cursor-glow");
 
     let mouseX = 0;
     let mouseY = 0;
     let glowX = 0;
     let glowY = 0;
+    let animationFrameId = null;
 
     const move = (e) => {
       mouseX = e.clientX;
@@ -26,13 +29,16 @@ export default function CursorGlow() {
         glow.style.top = `${glowY}px`;
       }
 
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
     }
 
     animate();
 
     return () => {
       document.removeEventListener("mousemove", move);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, []);
 

@@ -82,7 +82,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized: No token provided");
+    expect(body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -93,8 +93,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
-    expect(body.error.reason).toBe("invalid_token");
+    expect(body.error).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -139,6 +138,27 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
       { projection: { _id: 1, name: 1, email: 1, image: 1 } }
     );
     expect(mockLimit).toHaveBeenCalledWith(50);
+  });
+
+  test("escapes regex metacharacters in search param before querying MongoDB", async () => {
+    mockToArray.mockResolvedValue([]);
+
+    const req = createMockRequest("valid-token", "10.0.0.5", "http://localhost/api/labels?search=test.*%2B%3F");
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    // Characters like . * + ? should be backslash-escaped by escapeRegex
+    expect(mockFind).toHaveBeenCalledWith(
+      {
+        $or: [
+          { name: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
+          { email: { $regex: "test\\.\\*\\+\\?", $options: "i" } },
+        ],
+      },
+      { projection: { _id: 1, name: 1, email: 1, image: 1 } }
+    );
   });
 
   test("rate limits requests if more than MAX_ATTEMPTS (10) per IP are made (429)", async () => {

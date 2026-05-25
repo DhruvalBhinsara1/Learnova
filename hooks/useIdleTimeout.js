@@ -10,6 +10,7 @@ export function useIdleTimeout() {
   const logoutTimer = useRef(null);
   const warningTimer = useRef(null);
   const warningToastId = useRef(null);
+  const throttleTimer = useRef(null);
 
   const clearTimers = () => {
     if (logoutTimer.current) clearTimeout(logoutTimer.current);
@@ -39,12 +40,24 @@ export function useIdleTimeout() {
 
   useEffect(() => {
     const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
-    events.forEach((e) => window.addEventListener(e, resetTimers));
+    
+    const throttledReset = () => {
+      if (throttleTimer.current) return;
+      
+      throttleTimer.current = setTimeout(() => {
+        throttleTimer.current = null;
+      }, 1000);
+      
+      resetTimers();
+    };
+
+    events.forEach((e) => window.addEventListener(e, throttledReset, { passive: true }));
     resetTimers();
 
     return () => {
       clearTimers();
-      events.forEach((e) => window.removeEventListener(e, resetTimers));
+      if (throttleTimer.current) clearTimeout(throttleTimer.current);
+      events.forEach((e) => window.removeEventListener(e, throttledReset));
     };
   }, []);
 }
