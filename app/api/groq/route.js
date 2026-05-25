@@ -1,5 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import { authenticateRequest } from "@/lib/error-handler";
+import { authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { AppError, ValidationError } from "@/lib/errors";
 import { z } from "zod";
 
@@ -59,7 +59,7 @@ export async function POST(request) {
     }
 
     // Parse body
-    const body = await request.json();
+    const body = await parseJSON(request, 1024 * 10);
 
     const validation = groqSchema.safeParse(body);
     if (!validation.success) {

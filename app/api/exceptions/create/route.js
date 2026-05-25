@@ -1,6 +1,6 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireStudent } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
 import { NextResponse } from "next/server";
 import { ValidationError } from "@/lib/errors";
@@ -42,7 +42,7 @@ const exceptionCreateSchema = z.object({
 
 export const POST = withErrorHandler(async (request) => {
   const { payload: decodedToken } = await requireStudent(request);
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 10);
   
   const validation = exceptionCreateSchema.safeParse(body);
   if (!validation.success) {

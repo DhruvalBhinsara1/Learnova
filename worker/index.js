@@ -76,18 +76,3 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request)
-        .catch(async () => {
-          const cache = await caches.open("pages");
-          const cached = await caches.match("/offline.html");
-          return cached || new Response("You are offline", {
-            headers: { "Content-Type": "text/html" },
-          });
-        })
-    );
-  }
-});

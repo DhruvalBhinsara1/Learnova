@@ -1,11 +1,12 @@
 import { POST } from "./route";
-import { authenticateRequest } from "@/lib/error-handler";
+import { authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 jest.mock("@/lib/error-handler", () => ({
   authenticateRequest: jest.fn(),
   withErrorHandler: (handler) => handler,
+  parseJSON: jest.fn(),
 }));
 
 jest.mock("@/lib/firebase-admin", () => ({
@@ -36,6 +37,13 @@ describe("attendance record route", () => {
 
   test("writes attendance to Firestore with canonical doc id + instituteId", async () => {
     authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      studentName: "Client Name",
+      email: "client@example.com",
+      confidenceScore: 75,
+      date: "2026-05-25",
+    });
 
     getUserProfile.mockResolvedValue({
       fullName: "Server Name",
@@ -52,13 +60,6 @@ describe("attendance record route", () => {
     });
 
     const response = await POST({
-      json: async () => ({
-        userId: "user-123",
-        studentName: "Client Name",
-        email: "client@example.com",
-        confidenceScore: 75,
-        date: "2026-05-25",
-      }),
       headers: new Headers([["authorization", "Bearer test"]]),
       cookies: { get: jest.fn() },
     });

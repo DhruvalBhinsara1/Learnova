@@ -29,7 +29,12 @@ import { useAuthContext } from "@/contexts/AuthContext";
 // ---------------------------------------------------------------------------
 // Constants — centralized
 // ---------------------------------------------------------------------------
-import { CONTACT_INFO } from '../constants/contact';
+const CONTACT_INFO = {
+  email: "support@learnova.edu",
+  phone: "+1 (555) 019-2834",
+  demo: "https://learnova.edu/demo",
+  website: "https://learnova.edu"
+};
 
 // ---------------------------------------------------------------------------
 // Knowledge base
@@ -173,11 +178,11 @@ function highlightCode(code, language) {
   else if (lang === "json") keywordRegex = /\b(true|false|null)\b/g;
 
   const tokenRegex = new RegExp(
-    `(\\/\\/.*|#.*|\\/\\*[\\s\\S]*?\\*\\/)|` + // Group 1: Comments
-    `("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*'|\`(?:[^\`\\\\\\n]|\\\\.)*\`)|` + // Group 2: Strings
-    `(\\b\\d+(?:\\.\\d+)?\\b)|` + // Group 3: Numbers
-    `(${keywordRegex.source})|` + // Group 4: Keywords
-    `(\\b[a-zA-Z_]\\w*(?=\\())`, // Group 5: Functions
+    `(\\/\\/.*|#.*|\\/\\*[\\s\\S]*?\\*\\/)|` +
+    `("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*'|\`(?:[^\`\\\\\\n]|\\\\.)*\`)|` +
+    `(\\b\\d+(?:\\.\\d+)?\\b)|` +
+    `(${keywordRegex.source})|` +
+    `(\\b[a-zA-Z_]\\w*(?=\\())`,
     "g"
   );
 
@@ -247,138 +252,43 @@ const CodeBlock = ({ language, code }) => {
 };
 
 // ---------------------------------------------------------------------------
-// Markdown renderer components
-// ---------------------------------------------------------------------------
-const markdownComponents = {
-  p: ({ children }) => (
-    <p className="my-2 text-sm leading-relaxed text-gray-200 last:mb-0">{children}</p>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-semibold text-purple-400">{children}</strong>
-  ),
-  em: ({ children }) => (
-    <em className="italic text-blue-400">{children}</em>
-  ),
-  h1: ({ children }) => (
-    <h1 className="text-base font-bold mt-4 mb-2 text-white border-b border-white/10 pb-1">{children}</h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="text-sm font-semibold mt-3 mb-1.5 text-purple-300">{children}</h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="text-xs font-semibold mt-2.5 mb-1 text-blue-300">{children}</h3>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="border-l-4 border-purple-500 bg-purple-950/20 px-3 py-1.5 my-2 rounded-r-lg italic text-gray-300">
-      {children}
-    </blockquote>
-  ),
-  ul: ({ children }) => (
-    <ul className="list-disc pl-5 space-y-1.5 my-2 text-sm">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="list-decimal pl-5 space-y-1.5 my-2 text-sm">{children}</ol>
-  ),
-  li: ({ children }) => (
-    <li className="leading-relaxed text-sm text-gray-300">{children}</li>
-  ),
-  a: ({ href, children }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-purple-400 hover:text-purple-300 underline underline-offset-4 decoration-purple-500/50 hover:decoration-purple-400 transition-colors duration-150 inline-flex items-center gap-0.5"
-    >
-      {children}
-      <ExternalLink size={10} className="shrink-0" />
-    </a>
-  ),
-  table: ({ children }) => (
-    <div className="my-3 overflow-x-auto rounded-lg border border-white/10 bg-gray-900/40 backdrop-blur-sm max-w-full scrollbar-none">
-      <table className="min-w-full divide-y divide-white/10 text-xs text-left">
-        {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children }) => <thead className="bg-purple-950/40 text-purple-200">{children}</thead>,
-  tbody: ({ children }) => <tbody className="divide-y divide-white/5">{children}</tbody>,
-  tr: ({ children }) => <tr className="hover:bg-white/5 transition-colors duration-150">{children}</tr>,
-  th: ({ children }) => <th className="px-3 py-2 font-semibold border-b border-white/10">{children}</th>,
-  td: ({ children }) => <td className="px-3 py-2 text-gray-300 border-b border-white/5">{children}</td>,
-  code: ({ className, children, ...props }) => {
-    const match = /language-(\w+)/.exec(className || "");
-    const language = match ? match[1] : "";
-    const codeString = String(children).replace(/\n$/, "");
-
-    if (!match && !codeString.includes("\n")) {
-      return (
-        <code className="px-1.5 py-0.5 rounded-md text-xs bg-purple-950/40 text-purple-200 border border-purple-800/30 font-mono" {...props}>
-          {children}
-        </code>
-      );
-    }
-
-    return <CodeBlock language={language} code={codeString} />;
-  }
-};
-
-// ---------------------------------------------------------------------------
 // Bot response logic
 // ---------------------------------------------------------------------------
 async function generateBotResponse(userMessage, currentCategory, idToken, updatedMessages = []) {
   const lower = userMessage.toLowerCase();
 
-  // Greetings
   if (lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
     return "Hello! Welcome to Learnova — your Smart Student Engagement Ecosystem! I'm Nova, and I'm here to help:\n\n🎯 **Attendance Automation** — GPS + Time + Optional QR validation\n📚 **Smart Activities** — Turn idle hours into learning hours\n🔒 **Advanced Security** — Multi-factor authentication & encryption\n📊 **Analytics Dashboard** — Real-time insights for all stakeholders\n\nWhat would you like to explore first?";
   }
-
-  // Attendance
   if (lower.includes("attendance") || lower.includes("marking") || lower.includes("present")) {
     return `📋 **Learnova Attendance System**\n\n**Key Features:**\n${learnovaKnowledge.attendance.features.map((f) => `• ${f}`).join("\n")}\n\n**Benefits:**\n• ${learnovaKnowledge.attendance.benefits}\n• Works offline with auto-sync\n• Exception handling with teacher approval\n• Real-time transparency for parents\n\n**Flow:** Phone Verified → GPS + Time Check → Optional QR Scan → Offline Storage → Server Sync → Final Status\n\nWant to know more about any specific aspect?`;
   }
-
-  // Security / Privacy
   if (lower.includes("security") || lower.includes("privacy") || lower.includes("safe") || lower.includes("protection")) {
     return `🔒 **Security & Privacy Features**\n\n**Advanced Security:**\n${learnovaKnowledge.security.features.map((f) => `• ${f}`).join("\n")}\n\n**Privacy Protection:**\n• ${learnovaKnowledge.security.privacy}\n• Anonymous analytics options\n• Right to data deletion\n• Secure data export/import\n\n**Compliance:** GDPR, FERPA, SOC 2, ISO 27001\n\nNeed details about any specific security measure?`;
   }
-
-  // Activities / Gamification
   if (lower.includes("activity") || lower.includes("quiz") || lower.includes("game") || lower.includes("learning")) {
     return `🎮 **Smart Activity Hub**\n\n**Activity Types:**\n${learnovaKnowledge.activities.types.map((t) => `• ${t}`).join("\n")}\n\n**AI Personalization:**\n• Career goal mapping\n• Skill-based recommendations\n• Adaptive difficulty levels\n• Progress-based suggestions\n\n**Gamification:**\n• Badges and achievement systems\n• Class-wide leaderboards\n• Streak maintenance\n• Peer challenges\n\n**Impact:** ${learnovaKnowledge.activities.impact}\n\nInterested in trying our demo activities?`;
   }
-
-  // Analytics / Dashboards
   if (lower.includes("dashboard") || lower.includes("analytics") || lower.includes("report") || lower.includes("insight")) {
     return `📊 **Analytics & Dashboards**\n\n**Available Dashboards:**\n${learnovaKnowledge.analytics.dashboards.map((d) => `• ${d}`).join("\n")}\n\n**Key Metrics:**\n• Attendance patterns and trends\n• Activity engagement rates\n• Learning progress tracking\n• Time utilization analysis\n• Performance predictions\n\n**Export Options:** CSV, PDF, Excel formats | Scheduled automated reports | Custom report builder\n\nWhich dashboard would you like to learn more about?`;
   }
-
-  // Tech stack
   if (lower.includes("technical") || lower.includes("technology") || lower.includes("stack") || lower.includes("api")) {
     return `⚙️ **Technical Specifications**\n\n**Frontend:** ${learnovaKnowledge.technology.frontend}\n**Backend:** ${learnovaKnowledge.technology.backend}\n**AI Engine:** ${learnovaKnowledge.technology.ai}\n**Security:** ${learnovaKnowledge.technology.security}\n**Deployment:** ${learnovaKnowledge.technology.deployment}\n\n**Key Features:** PWA | Offline-first | Cross-platform | Real-time sync | Scalable microservices | RESTful + GraphQL APIs\n\nNeed more details about any specific component?`;
   }
-
-  // Pricing
   if (lower.includes("price") || lower.includes("cost") || lower.includes("plan") || lower.includes("subscription")) {
     return `💰 **Learnova Pricing Plans**\n\n🆓 **Free Tier (Trial)**\n• Up to 50 students | Basic attendance | Limited activities | Standard support\n\n🏫 **Institution Plan**\n• Unlimited students | Full feature access | Advanced analytics | Priority support | Custom integrations | Training included\n\n🏢 **Enterprise**\n• Multi-campus support | White-label options | Dedicated support | Custom development | SLA guarantees\n\nContact our team for personalized pricing!`;
   }
-
-  // Setup / Getting started
   if (lower.includes("setup") || lower.includes("implement") || lower.includes("install") || lower.includes("start")) {
     return `🚀 **Getting Started with Learnova**\n\n1️⃣ **Institution Registration** — Provide basic details\n2️⃣ **System Configuration** — Customize settings\n3️⃣ **User Import** — Bulk upload student/teacher data\n4️⃣ **Training Sessions** — Staff onboarding workshops\n5️⃣ **Pilot Testing** — Start with selected classes\n6️⃣ **Full Deployment** — Institution-wide rollout\n\n**Implementation Support:** Dedicated onboarding manager | 24/7 support during transition | Data migration assistance\n\n**Timeline:** Typically 2–4 weeks from signup to full deployment\n\nReady to schedule a demo?`;
   }
-
-  // Support / Contact / Demo
   if (lower.includes("support") || lower.includes("help") || lower.includes("contact") || lower.includes("demo")) {
     return `🛟 **Support & Contact**\n\n📧 **Email:** ${CONTACT_INFO.email}\n📞 **Phone:** ${CONTACT_INFO.phone}\n🌐 **Website:** ${CONTACT_INFO.website}\n🎯 **Live Demo:** ${CONTACT_INFO.demo}\n\n**Response Times:**\n• General inquiries: Within 4 hours\n• Technical issues: Within 2 hours\n• Urgent/Critical: Within 30 minutes\n\nHow can I connect you with the right channel?`;
   }
 
-  // Try API
   try {
     const headers = { "Content-Type": "application/json" };
-    if (idToken) {
-      headers["Authorization"] = `Bearer ${idToken}`;
-    }
+    if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+    
     const response = await fetch("/api/groq", {
       method: "POST",
       headers,
@@ -393,11 +303,10 @@ async function generateBotResponse(userMessage, currentCategory, idToken, update
 
     if (response.ok) {
       const payload = await response.json();
-      const content = payload?.data?.message || payload?.message;
-      if (content) return content;
+      return payload?.data?.message || payload?.message;
     }
   } catch {
-    // fall through to fallback
+    // Fall-through to safety defaults
   }
 
   return fallbackResponses[currentCategory] ?? fallbackResponses.general;
@@ -421,23 +330,24 @@ async function saveConversation(userText, botText) {
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-const LearnovaChatbot = () => {
-  // Get the Firebase user object so we can fetch a fresh ID token per request
+export default function LearnovaChatbot() {
   const { user } = useAuthContext();
-
-  const INITIAL_MESSAGE = {
-    id: 1,
-    text: "Hello! I'm Nova, your AI assistant for Learnova — the Smart Student Engagement Ecosystem! I can help you with attendance management, smart activities, security features, analytics, and more. What would you like to know?",
-    isBot: true,
-    timestamp: new Date(),
-  };
-
   const { theme, resolvedTheme, setTheme } = useTheme();
+  
   const isDarkMode = resolvedTheme === "dark" || theme === "dark";
+
+  const getContextWelcomeMessage = useCallback(() => {
+    if (!user) return "Hello! I'm Nova, your AI assistant for Learnova. How can I assist you today?";
+    const nameSegment = user.displayName || user.email?.split('@')[0] || "there";
+    const role = user.role?.toLowerCase() || "";
+    if (role === "teacher" || role === "instructor") return `Hello Creator! Ready to manage your classes or check attendance logs today?`;
+    if (role === "student") return `Hi ${nameSegment}, need help finding your assignments or checking your attendance?`;
+    return `Hello ${nameSegment}! Welcome to Learnova. How can I help you today?`;
+  }, [user]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState(() => [INITIAL_MESSAGE]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
@@ -447,21 +357,29 @@ const LearnovaChatbot = () => {
   const userHasScrolledUp = useRef(false);
 
   useEffect(() => {
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(),
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
+  }, [getContextWelcomeMessage]);
+
+  useEffect(() => {
     if (!inputMessage && textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
   }, [inputMessage]);
 
-  // Handle manual scroll monitoring to pause/resume autoscroll
   const handleScroll = () => {
     const container = messagesContainerRef.current;
     if (!container) return;
-    // If the scroll is near the bottom (within 40px), consider it at bottom and allow autoscroll
     const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 40;
     userHasScrolledUp.current = !isAtBottom;
   };
 
-  // Auto scroll within the chat panel only (avoid scrolling the page)
   useEffect(() => {
     if (!isOpen || isMinimized) return;
     if (userHasScrolledUp.current) return;
@@ -475,7 +393,6 @@ const LearnovaChatbot = () => {
     }
   }, [messages, isOpen, isMinimized, isLoading]);
 
-  // Auto-resize textarea
   const handleInputChange = (e) => {
     setInputMessage(e.target.value);
     const ta = textareaRef.current;
@@ -486,7 +403,14 @@ const LearnovaChatbot = () => {
   };
 
   const clearChat = () => {
-    setMessages([INITIAL_MESSAGE]);
+    setMessages([
+      {
+        id: Date.now(),
+        text: getContextWelcomeMessage(),
+        isBot: true,
+        timestamp: new Date(),
+      }
+    ]);
     setCurrentCategory("general");
     userHasScrolledUp.current = false;
   };
@@ -509,7 +433,6 @@ const LearnovaChatbot = () => {
       if (textareaRef.current) textareaRef.current.style.height = "auto";
       setIsLoading(true);
 
-      // Small delay for UX
       await new Promise((r) => setTimeout(r, 600));
 
       let botText = "";
@@ -537,7 +460,7 @@ const LearnovaChatbot = () => {
 
       await saveConversation(text, botText);
     },
-    [inputMessage, isLoading, currentCategory, user]
+    [inputMessage, isLoading, currentCategory, user, messages]
   );
 
   const handleKeyDown = (e) => {
@@ -547,9 +470,6 @@ const LearnovaChatbot = () => {
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Theme tokens - Enhanced for rich glassmorphism & premium UI spacing
-  // ---------------------------------------------------------------------------
   const t = {
     bg: isDarkMode 
       ? "bg-gray-950/90 backdrop-blur-xl text-white" 
@@ -586,11 +506,9 @@ const LearnovaChatbot = () => {
           aria-label="Open Nova chat"
         >
           <MessageCircle size={24} />
-          {/* Pulse badge */}
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
             <Sparkles size={14} />
           </span>
-          {/* Tooltip */}
           <span className="absolute -left-28 -top-10 bg-gray-900 text-white px-3 py-1 rounded-lg text-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
             Ask Nova anything!
           </span>
@@ -605,7 +523,9 @@ const LearnovaChatbot = () => {
   return (
     <div
       className={`fixed z-50 flex flex-col ${t.bg} shadow-2xl transition-all duration-300 border ${t.border} ${
-        isMinimized ? "bottom-6 right-6 w-72 h-16 overflow-hidden rounded-xl" : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
+        isMinimized 
+          ? "bottom-6 right-6 w-72 h-16 overflow-hidden rounded-xl" 
+          : "bottom-0 right-0 w-full h-full rounded-none sm:bottom-6 sm:right-6 sm:w-96 sm:h-[660px] sm:rounded-xl"
       }`}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -645,168 +565,101 @@ const LearnovaChatbot = () => {
           {/* ── Category Tabs ────────────────────────────────────────────── */}
           <div className={`p-2 border-b ${t.border} shrink-0`}>
             <div className="flex space-x-1 overflow-x-auto scrollbar-none">
-              {categories.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setCurrentCategory(id)}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap ${
-                    currentCategory === id ? t.catBtnActive : t.catBtn
-                  }`}
-                >
-                  <Icon size={12} />
-                  <span>{label}</span>
-                </button>
-              ))}
+              {categories.map((cat) => {
+                const IconComponent = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCurrentCategory(cat.id)}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+                      currentCategory === cat.id ? t.catBtnActive : t.catBtn
+                    }`}
+                  >
+                    <IconComponent size={14} />
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* ── Messages Area ─────────────────────────────────────────────── */}
+          {/* ── Messages Stream Container ─────────────────────────────────── */}
           <div
             ref={messagesContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-none"
+            className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 select-text"
           >
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex animate-fadeIn ${
-  message.isBot ? "justify-start" : "justify-end"
-}`}
-              >
-                <div className={`flex max-w-[85%] items-end gap-2 ${message.isBot ? "flex-row" : "flex-row-reverse"}`}>
-                  {/* Avatar */}
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${message.isBot ? t.botAvatar : t.userAvatar}`}>
-                    {message.isBot ? <Bot size={16} /> : <User size={16} />}
-                  </div>
-
-                  {/* Bubble */}
-                  <div className={`px-4 py-3 rounded-2xl shadow-sm ${message.isBot ? t.botMsg : t.userMsg}`}>
-                    {message.isBot ? (
-                      <ReactMarkdown components={markdownComponents}>
-                        {message.text}
-                      </ReactMarkdown>
-                    ) : (
-                      <p className="text-sm whitespace-pre-line leading-relaxed">
-                        {message.text}
-                      </p>
-                    )}
-                    <p className="text-xs mt-2 opacity-60">
-                      {new Date(message.timestamp).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex items-start space-x-2.5 ${msg.isBot ? "" : "flex-row-reverse space-x-reverse"}`}>
+                <div className={`p-2 rounded-xl shrink-0 ${msg.isBot ? t.botAvatar : t.userAvatar}`}>
+                  {msg.isBot ? <Bot size={16} /> : <User size={16} />}
+                </div>
+                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm transition-all duration-200 ${msg.isBot ? t.botMsg : t.userMsg}`}>
+                  {msg.isBot ? (
+                    <ReactMarkdown components={markdownComponents}>{msg.text}</ReactMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words leading-relaxed">{msg.text}</p>
+                  )}
                 </div>
               </div>
             ))}
 
-            {/* Suggested questions — shown only with the welcome message */}
-            {messages.length === 1 && (
-              <div className="space-y-2">
-                <p className={`text-xs font-medium text-center ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}>
-                  💡 Popular questions about{" "}
-                  {categories.find((c) => c.id === currentCategory)?.label}:
-                </p>
-                {suggestedQuestions[currentCategory]?.map((q, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSendMessage(q)}
-                    className={`w-full text-left text-xs px-3 py-2 rounded-lg transition-all duration-200 hover:scale-[1.01] ${t.suggestion}`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Loading indicator */}
+            {/* Loading / Typing Animation Indicator */}
             {isLoading && (
-              <div className="flex justify-start">
-                <div className={`${t.loading} rounded-2xl px-4 py-3 shadow-sm`}>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      {[0, 0.1, 0.2].map((delay, i) => (
-                        <div
-                          key={i}
-                          className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
-                          style={{ animationDelay: `${delay}s` }}
-                        />
-                      ))}
-                    </div>
-                    <span
-                      className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                    >
-                      Analyzing your question...
-                    </span>
+              <div className="flex items-start space-x-2.5">
+                <div className={`p-2 rounded-xl shrink-0 ${t.botAvatar}`}>
+                  <Bot size={16} />
+                </div>
+                <div className={`rounded-2xl px-4 py-3 shadow-sm ${t.loading}`}>
+                  <div className="flex space-x-1.5 items-center h-4">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
                   </div>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* ── Quick Contact Bar ─────────────────────────────────────────── */}
-          <div className={`px-4 py-2 border-t ${t.border} shrink-0`}>
-            <div className="flex items-center justify-center space-x-4 text-xs">
-              <a
-                href={`mailto:${CONTACT_INFO.email}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-blue-400" : "text-blue-600"}`}
+          {/* ── Context Suggestions Layer ─────────────────────────────────── */}
+          <div className={`px-4 py-2 bg-transparent overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2 border-t ${t.border} shrink-0`}>
+            {suggestedQuestions[currentCategory]?.map((q, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleSendMessage(q)}
+                className={`text-xs px-3 py-1.5 rounded-full transition-all duration-150 border active:scale-95 text-left truncate max-w-xs cursor-pointer ${t.suggestion}`}
               >
-                <Mail size={12} />
-                <span>Email</span>
-              </a>
-              <a
-                href={`tel:${CONTACT_INFO.phone}`}
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-green-400" : "text-green-600"}`}
-              >
-                <Phone size={12} />
-                <span>Call</span>
-              </a>
-              <a
-                href={CONTACT_INFO.demo}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`flex items-center space-x-1 hover:underline ${isDarkMode ? "text-purple-400" : "text-purple-600"}`}
-              >
-                <ExternalLink size={12} />
-                <span>Demo</span>
-              </a>
-            </div>
+                {q}
+              </button>
+            ))}
           </div>
 
-          {/* ── Input ─────────────────────────────────────────────────────── */}
-          <div className={`p-4 border-t ${t.border} shrink-0`}>
-            <div className="flex items-end gap-3">
-              <textarea
-                ref={textareaRef}
-                value={inputMessage}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                disabled={isLoading}
-                placeholder="Ask Nova about Learnova…"
-                rows={1}
-                className={`flex-1 px-4 py-3 border rounded-xl resize-none focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm ${t.input}`}
-                style={{ minHeight: "48px", maxHeight: "120px" }}
-              />
+          {/* ── Input Interaction Area ───────────────────────────────────── */}
+          <div className={`p-3 border-t ${t.border} shrink-0`}>
+            <div className="flex items-end space-x-2">
+              <div className="relative flex-1">
+                <textarea
+                  ref={textareaRef}
+                  value={inputMessage}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Ask Nova about ${currentCategory}...`}
+                  rows={1}
+                  className={`w-full max-h-32 pr-10 pl-3 py-2.5 rounded-xl text-sm font-normal resize-none overflow-y-auto border outline-none transition-all duration-200 focus:outline-none ${t.input}`}
+                  style={{ minHeight: "40px" }}
+                />
+              </div>
               <button
                 onClick={() => handleSendMessage()}
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shrink-0"
-                aria-label="Send message"
+                className="bg-purple-600 hover:bg-purple-500 text-white p-2.5 rounded-xl transition-all duration-150 disabled:opacity-40 disabled:hover:bg-purple-600 disabled:scale-100 active:scale-95 shrink-0 flex items-center justify-center cursor-pointer shadow-md shadow-purple-900/10"
               >
-                <Send size={18} />
+                <Send size={16} />
               </button>
             </div>
-            <p className={`text-xs mt-2 text-center ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}>
-              Powered by Nova AI · Shift + Enter for new line
-            </p>
           </div>
         </>
       )}
     </div>
   );
-};
-
-export default LearnovaChatbot;
+}

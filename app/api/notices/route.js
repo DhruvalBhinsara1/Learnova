@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ async function publishNotice(request) {
   const allowedRoles = ["teacher", "admin", "staff"];
   const { payload: decodedToken, profile } = await requireRole(request, allowedRoles);
 
-  const body = await request.json();
+  const body = await parseJSON(request, 1024 * 50);
   const validData = noticeSchema.parse(body);
 
 

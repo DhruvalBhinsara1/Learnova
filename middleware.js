@@ -9,22 +9,36 @@ const JWKS_URL = new URL(
 const JWKS = createRemoteJWKSet(JWKS_URL);
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
 
-const PAGE_CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
-  "media-src 'self' blob:",
-  "worker-src 'self' blob:",
-  "frame-src 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
+function buildPageCsp() {
+  const frameSrc = [
+    "'self'",
+    "https://accounts.google.com",
+    "https://*.google.com",
+    "https://*.firebaseapp.com",
+  ];
+
+  if (FIREBASE_AUTH_DOMAIN) {
+    frameSrc.push(`https://${FIREBASE_AUTH_DOMAIN}`);
+  }
+
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com https://www.google-analytics.com",
+    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebase.io https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://region1.google-analytics.com https://*.public.blob.vercel-storage.com https://api.emailjs.com",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    `frame-src ${Array.from(new Set(frameSrc)).join(" ")}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
 
 /**
  * Verifies a Firebase ID token's RS256 signature and all standard claims.
@@ -193,7 +207,7 @@ export async function middleware(request) {
   });
 
   if (isPage) {
-    response.headers.set("Content-Security-Policy", PAGE_CSP);
+    response.headers.set("Content-Security-Policy", buildPageCsp());
   }
 
   return response;
