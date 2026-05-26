@@ -530,32 +530,98 @@ export default function ProductivityPage() {
     const startNoise = (ctx, type, gainNode) => {
       const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = buffer.getChannelData(0);
-      for (let i = 0; i < data.length; i += 1) {
-        data[i] = Math.random() * 2 - 1;
-      }
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
+      const stopCallbacks = [];
 
       const filter = ctx.createBiquadFilter();
+
       if (type === "rain") {
+        // Synthesize Pink Noise (Voss-McCartney method) for rain
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < data.length; i += 1) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          b3 = 0.86650 * b3 + white * 0.3104856;
+          b4 = 0.55000 * b4 + white * 0.5329522;
+          b5 = -0.7616 * b5 - white * 0.0168980;
+          const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+          b6 = white * 0.115926;
+          data[i] = pink * 0.12; // Normalize peak amplitude
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
         filter.type = "lowpass";
-        filter.frequency.value = 1200;
+        filter.frequency.value = 1000;
+
+        source.connect(filter);
+        filter.connect(gainNode);
+        source.start();
+
+        stopCallbacks.push(() => {
+          source.stop();
+          source.disconnect();
+        });
       } else {
+        // Synthesize Brown Noise (Leaky Integrator walk) for wind
+        let lastOut = 0.0;
+        for (let i = 0; i < data.length; i += 1) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = data[i];
+          data[i] *= 3.5; // Amplify back to audible range
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
         filter.type = "bandpass";
-        filter.frequency.value = 500;
-        filter.Q.value = 0.6;
+        filter.frequency.value = 350;
+        filter.Q.value = 1.5;
+
+        // Dynamic wind gust simulator (LFO filter frequency sweeper)
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+
+        lfo.type = "sine";
+        lfo.frequency.value = 0.08; // Swings once every 12.5 seconds
+        lfoGain.gain.value = 150; // Sweeps frequency by +/- 150Hz
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        source.connect(filter);
+        filter.connect(gainNode);
+        
+        source.start();
+        lfo.start();
+
+        stopCallbacks.push(() => {
+          source.stop();
+          lfo.stop();
+          source.disconnect();
+          lfo.disconnect();
+          lfoGain.disconnect();
+        });
       }
 
-      source.connect(filter);
-      filter.connect(gainNode);
-      source.start();
+      stopCallbacks.push(() => {
+        filter.disconnect();
+      });
 
       return {
         stop: () => {
-          source.stop();
-          source.disconnect();
-          filter.disconnect();
+          stopCallbacks.forEach((cb) => {
+            try {
+              cb();
+            } catch (err) {
+              console.warn("Error cleaning up audio nodes:", err);
+            }
+          });
         },
       };
     };
