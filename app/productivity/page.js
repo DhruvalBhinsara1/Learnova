@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import DarkVeil from "@/components/ui-block/DarkVeil";
+import TimerSkeleton from "@/components/ui/TimerSkeleton";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
@@ -98,6 +99,7 @@ export default function ProductivityPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [calendarFilter, setCalendarFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
   const [taskInput, setTaskInput] = useState("");
   const [taskPriority, setTaskPriority] = useState("medium");
   const [tasks, setTasks] = useState([
@@ -141,6 +143,13 @@ export default function ProductivityPage() {
     } catch (error) {
       console.error("Failed to load productivity storage", error);
     }
+    
+    // Set loading to false after component mounts
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -483,6 +492,11 @@ export default function ProductivityPage() {
       className={`min-h-screen bg-linear-to-br ${ambientGradient} text-white relative overflow-hidden`}
     >
       <Navbar />
+      
+      {loading ? (
+        <TimerSkeleton />
+      ) : (
+        <>
       <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
         <DarkVeil />
       </div>
@@ -1290,6 +1304,8 @@ export default function ProductivityPage() {
           </button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { motion, useMotionValue, useTransform, animate, useInView } from "framer
 import SplitText from "@/components/ui-block/SplitText";
 import DarkVeil from "@/components/ui-block/DarkVeil";
 import CommentSection from "@/components/CommentSection";
+import HomeSkeleton from "@/components/ui/HomeSkeleton";
 
 
 import {
@@ -251,7 +252,19 @@ export default function AboutPage() {
   const { theme } = useTheme();
   const [language, setLanguage] = useState("en");
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
   useEffect(() => setMounted(true), []);
+  
+  // Simulate initial page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
   const isDark = mounted ? theme === "dark" : true;
   const [scrollY, setScrollY] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -360,6 +373,10 @@ export default function AboutPage() {
       <div className="min-h-screen relative z-50">
         <Navbar />
 
+        {loading ? (
+          <HomeSkeleton />
+        ) : (
+          <>
         {/* Hero Section */}
         <section
           id="hero"
@@ -944,6 +961,8 @@ export default function AboutPage() {
             </div>
           </Reveal>
         </section>
+        </>
+      )}
       </div>
 
       <style jsx>{`

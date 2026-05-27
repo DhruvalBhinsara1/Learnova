@@ -4,6 +4,7 @@ import DarkVeil from "@/components/ui-block/DarkVeil";
 import React, { useState, useRef, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import FormSkeleton from "@/components/ui/FormSkeleton";
 import { CONTACT_INFO } from '@/constants/contact';
 import {
   Mail,
@@ -24,7 +25,16 @@ import emailjs from "@emailjs/browser";
 export default function Contact() {
   const { theme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    setMounted(true);
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const isDark = mounted ? theme === "dark" : true;
   const [formData, setFormData] = useState({
     name: "",
@@ -247,6 +257,14 @@ export default function Contact() {
       <div className="min-h-screen relative z-50">
         <Navbar />
 
+        {loading ? (
+          <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
+              <FormSkeleton />
+            </div>
+          </section>
+        ) : (
+          <>
         {/* Hero Section */}
         <section className="pt-32 pb-16 px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
@@ -509,6 +527,8 @@ export default function Contact() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       {/* Floating Animation Styles */}
