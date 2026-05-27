@@ -11,8 +11,10 @@ import { checkRateLimit } from "@/lib/rateLimit";
 export const dynamic = "force-dynamic";
 
 /**
- * Sanitizes incoming text streams to eliminate malicious script or markup tags 
- * while maintaining Markdown symbols for UI representation.
+ * Escapes HTML tag brackets and dangerous special characters inside incoming 
+ * text streams to completely eliminate malicious script or markup execution,
+ * while maintaining standard Markdown symbols for UI representation.
+ * Follows OWASP recommendations by escaping &, <, >, ", ', and /.
  */
 const sanitizeText = (text) => {
   if (typeof text !== "string") return "";
