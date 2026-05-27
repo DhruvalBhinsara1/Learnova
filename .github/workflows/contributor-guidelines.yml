@@ -24,7 +24,9 @@ jobs:
             const eventType = context.payload.issue ? 'issue' : 'pull_request';
             const issue_number = context.payload.issue?.number || context.payload.pull_request?.number;
 
-            // Query open issues by this contributor
+            // Query open issues by this contributor.
+            // Note: GitHub's issues.listForRepo API returns both issues and pull requests,
+            // so we must filter out pull request objects afterwards.
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
