@@ -1,51 +1,55 @@
 import { connectDb } from "@/lib/mongodb";
+import { parseJSON, authenticateRequest, withErrorHandler } from "@/lib/error-handler";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request) {
-  let body = {};
+export const POST = withErrorHandler(async (request) => {
+  const decodedToken = await authenticateRequest(request);
 
-  try {
-    body = await request.json();
-  } catch {
-    body = {};
-  }
-
+  const body = await parseJSON(request, 1024);
   const { userId } = body;
 
   if (!userId) {
-    return Response.json({ success: false, message: "userId is required" }, { status: 400 });
+    throw new AppError("userId is required", 400);
   }
 
-  try {
-    const db = await connectDb();
-
-    await db.collection("notifications").insertMany([
-      {
-        userId,
-        message: "Attendance marked for CS101",
-        type: "attendance",
-        read: false,
-        createdAt: new Date(),
-      },
-      {
-        userId,
-        message: "New notice posted by Admin",
-        type: "notice",
-        read: false,
-        createdAt: new Date(),
-      },
-      {
-        userId,
-        message: "System alert: Maintenance scheduled",
-        type: "alert",
-        read: false,
-        createdAt: new Date(),
-      },
-    ]);
-
-    return Response.json({ success: true });
-  } catch {
-    return Response.json({ success: false }, { status: 500 });
+  if (decodedToken.uid !== userId) {
+    throw new AppError("Forbidden: You can only seed notifications for your own account", 403);
   }
-}
+
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(`notifications_seed_${ip}_${userId}`);
+  if (!rateLimitResult.allowed) {
+    return Response.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+  }
+
+  const db = await connectDb();
+
+  await db.collection("notifications").insertMany([
+    {
+      userId,
+      message: "Attendance marked for CS101",
+      type: "attendance",
+      read: false,
+      createdAt: new Date(),
+    },
+    {
+      userId,
+      message: "New notice posted by Admin",
+      type: "notice",
+      read: false,
+      createdAt: new Date(),
+    },
+    {
+      userId,
+      message: "System alert: Maintenance scheduled",
+      type: "alert",
+      read: false,
+      createdAt: new Date(),
+    },
+  ]);
+
+  return Response.json({ success: true });
+});
