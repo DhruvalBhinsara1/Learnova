@@ -30,6 +30,30 @@ const deleteCookie = (name) => {
   }
 };
 
+const AUTH_SENSITIVE_CACHE_PATTERNS = [
+  /auth/i,
+  /user/i,
+  /session/i,
+  /token/i,
+  /profile/i,
+  /secure/i,
+];
+
+export const clearAuthSensitiveCaches = async () => {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+
+  try {
+    const cacheKeys = await caches.keys();
+    const authCacheKeys = cacheKeys.filter((key) =>
+      AUTH_SENSITIVE_CACHE_PATTERNS.some((pattern) => pattern.test(key))
+    );
+
+    await Promise.all(authCacheKeys.map((key) => caches.delete(key)));
+  } catch (cacheErr) {
+    console.warn("Failed to clear auth-sensitive caches:", cacheErr);
+  }
+};
+
 /**
  * Provides authentication state and user profile information.
  * Tracks Firebase authentication changes and exposes auth-related utilities.
@@ -123,17 +147,8 @@ export const useAuth = () => {
           deleteCookie("authToken");
           deleteCookie("userRole");
 
-          // Clear PWA caches on logout to prevent data leakage on shared devices
-          if (typeof window !== "undefined" && "caches" in window) {
-            try {
-              const cacheKeys = await caches.keys();
-              await Promise.all(
-                cacheKeys.map((key) => caches.delete(key))
-              );
-            } catch (cacheErr) {
-              console.warn("Failed to clear PWA caches on auth state change:", cacheErr);
-            }
-          }
+          // Clear only auth-sensitive caches and preserve static/app shell caches
+          await clearAuthSensitiveCaches();
           setLoading(false);
         }
 
@@ -173,17 +188,8 @@ export const useAuth = () => {
       deleteCookie("authToken");
       deleteCookie("userRole");
 
-      // Clear all PWA caches to prevent cached API responses from persisting after logout
-      if (typeof window !== "undefined" && "caches" in window) {
-        try {
-          const cacheKeys = await caches.keys();
-          await Promise.all(
-            cacheKeys.map((key) => caches.delete(key))
-          );
-        } catch (cacheErr) {
-          console.warn("Failed to clear PWA caches on sign out:", cacheErr);
-        }
-      }
+      // Clear only auth-sensitive caches and preserve static/app shell caches
+      await clearAuthSensitiveCaches();
     } catch (err) {
       setError(err.message);
     }
