@@ -85,7 +85,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -96,7 +96,7 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(connectDb).not.toHaveBeenCalled();
   });
 
@@ -189,6 +189,29 @@ describe("GET /api/labels - Security & Authentication Tests", () => {
     const body11 = await response11.json();
 
     expect(response11.status).toBe(429);
-    expect(body11.error).toContain("Too many attempts");
+    expect(body11.error.message).toContain("Too many attempts");
+  });
+
+  test("does not expose hasImage flag for student role to prevent enumeration", async () => {
+    const mockUsers = [
+      { name: "Alice", email: "alice@domain.com", image: "https://example.com/alice.jpg" },
+      { name: "Bob", email: "bob@domain.com", image: "https://example.com/bob.jpg" },
+    ];
+    mockToArray.mockResolvedValue(mockUsers);
+
+    getUserProfile.mockResolvedValue({ role: "student" });
+
+    const req = createMockRequest("valid-token");
+    const response = await GET(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data).toEqual([
+      { name: "Alice", email: "alice@domain.com" },
+      { name: "Bob", email: "bob@domain.com" },
+    ]);
+    expect(body.data[0]).not.toHaveProperty("hasImage");
+    expect(body.data[1]).not.toHaveProperty("hasImage");
   });
 });

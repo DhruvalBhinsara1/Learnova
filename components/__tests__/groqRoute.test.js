@@ -64,7 +64,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -80,7 +80,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error.message).toBe("Unauthorized");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -95,7 +95,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Message is required");
+    expect(body.error.message).toBe("Message is required");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -111,7 +111,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error).toBe("Message too long (max 2000 characters)");
+    expect(body.error.message).toBe("Message too long (max 2000 characters)");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -157,7 +157,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error).toBe("Too many requests. Please try again later.");
+    expect(body.error.message).toBe("Too many requests. Please try again later.");
   });
 
   test("successfully resolves Groq call for authenticated, non-rate-limited requests", async () => {
@@ -201,7 +201,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(504);
-    expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
+    expect(body.error.message).toBe("Gateway Timeout: Groq did not respond in time.");
     expect(global.fetch).toHaveBeenCalled();
   });
 
@@ -224,7 +224,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error).toBe("Upstream quota exceeded");
+    expect(body.error.message).toBe("Upstream quota exceeded");
   });
 
   test("uses fallback message when Groq upstream error body is invalid", async () => {
@@ -244,6 +244,92 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error).toBe("Groq API request failed");
+    expect(body.error.message).toBe("Groq API request failed");
+  });
+
+  test("accepts messages array format and extracts last user message", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-msg-array", email: "user@example.com" });
+
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        choices: [{ message: { content: "Response with history" } }],
+      }),
+    });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "user", content: "What is attendance?" },
+          { role: "assistant", content: "Attendance is..." },
+          { role: "user", content: "Tell me more" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.message).toBe("Response with history");
+  });
+
+  test("rejects messages array with no user role entries as missing input", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-no-user-msg", email: "user@example.com" });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "assistant", content: "Hello" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.message).toBe("Message is required");
+  });
+
+  test("passes conversation history to Groq API request", async () => {
+    verifyFirebaseToken.mockResolvedValue({ uid: "user-history-check", email: "user@example.com" });
+
+    let fetchBody;
+    global.fetch.mockImplementation((url, options) => {
+      fetchBody = JSON.parse(options.body);
+      return Promise.resolve({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          choices: [{ message: { content: "Response with memory" } }],
+        }),
+      });
+    });
+
+    const req = createMockRequest(
+      { authorization: "Bearer valid-token" },
+      {
+        messages: [
+          { role: "user", content: "My name is Alice" },
+          { role: "assistant", content: "Nice to meet you Alice!" },
+          { role: "user", content: "What is my name?" },
+        ],
+      }
+    );
+    const response = await POST(req);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.message).toBe("Response with memory");
+
+    const userMessages = fetchBody.messages.filter(m => m.role === "user");
+    expect(userMessages).toHaveLength(2);
+    expect(userMessages[0].content).toBe("My name is Alice");
+    expect(userMessages[1].content).toBe("What is my name?");
+
+    const assistantMessages = fetchBody.messages.filter(m => m.role === "assistant");
+    expect(assistantMessages).toHaveLength(1);
+    expect(assistantMessages[0].content).toBe("Nice to meet you Alice!");
   });
 });

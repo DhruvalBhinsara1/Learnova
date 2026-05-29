@@ -23,12 +23,13 @@ import ChartSkeleton from "@/components/ui/ChartSkeleton";
 
 import { Navbar } from "./Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useCurriculum } from "@/hooks/useCurriculum";
 
 import AchievementSection from "./AchievementSection";
 import AttendanceChart from "./AttendanceChart";
 
 import { weeklySchedule } from "@/constants/mockData";
-import { getUserActivities } from "@/services/activityService";
 
 import AttendanceAnalytics from "./dashboard/AttendanceAnalytics";
 import StreakCounter from "./gamification/StreakCounter";
@@ -57,74 +58,20 @@ const AttendanceCalendar = dynamic(
 const StudentDashboard = () => {
   const { user } = useAuth();
 
+  const { recentActivity, gamificationData } = useAttendance({ role: "student", user });
+  const { curriculum } = useCurriculum({ role: "student", user });
+
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [error, setError] = useState(null);
 
   const [todayClasses, setTodayClasses] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
 
   const [upcomingClass, setUpcomingClass] = useState(null);
   const [isAttendanceWindow, setIsAttendanceWindow] = useState(false);
 
-  const [gamificationData, setGamificationData] = useState(null);
-
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
-
-  useEffect(() => {
-    const fetchActivity = async () => {
-      try {
-        if (!user?.uid) return;
-
-        const activities = await getUserActivities(user.uid);
-
-        const mapped = activities.map((a) => ({
-          subject: a.title,
-          date: a.timestamp?.toLocaleDateString() || "",
-          status: a.progress >= 100 ? "present" : "late",
-        }));
-
-        setRecentActivity(mapped);
-      } catch (err) {
-        console.error("Failed to load activity", err);
-      }
-    };
-
-    fetchActivity();
-  }, [user]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchGamification = async () => {
-      try {
-        if (!user) return;
-
-        const token = await user.getIdToken();
-
-        const res = await fetch("/api/student/gamification", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          signal: controller.signal,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setGamificationData(data);
-        }
-      } catch (err) {
-        if (err.name === "AbortError") return;
-
-        console.error("Failed to load gamification data", err);
-      }
-    };
-
-    fetchGamification();
-
-    return () => controller.abort();
-  }, [user]);
 
   const attendanceStats = useMemo(() => {
     const counts = recentActivity.reduce(

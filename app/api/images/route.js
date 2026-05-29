@@ -3,7 +3,9 @@ import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { del } from "@vercel/blob";
-import { AppError } from "@/lib/errors";
+import { connectDb } from "@/lib/mongodb";
+import { getUserProfile } from "@/lib/firebase-admin";
+import { AppError, ForbiddenError, NotFoundError } from "@/lib/errors";
 import {
   extractImageFileFromFormData,
   fetchAndValidateImage,
@@ -20,7 +22,25 @@ export const GET = withErrorHandler(async (request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
-  await requireAuth(request);
+  const decodedToken = await requireAuth(request);
+
+  const db = await connectDb();
+  const users = db.collection("users");
+  const requestingUser = await users.findOne(
+    { firebaseUid: decodedToken.uid },
+    { projection: { _id: 1 } }
+  );
+
+  if (!requestingUser) {
+    throw new NotFoundError("User not found");
+  }
+
+  if (requestingUser._id.toString() !== id) {
+    const profile = await getUserProfile(decodedToken.uid);
+    if (!profile || !["admin", "teacher"].includes(profile.role)) {
+      throw new ForbiddenError("You can only view your own profile image");
+    }
+  }
 
   const imageUrl = await getUserImageFromDb({ id });
   const { imageBuffer, contentType } = await fetchAndValidateImage(imageUrl);

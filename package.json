@@ -2,7 +2,7 @@
   "name": "learnova",
   "version": "1.0.0",
   "description": "AI-Powered Smart Student Engagement & Attendance Platform",
-  "private": false,
+  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/Premshaw23/Learnova.git"

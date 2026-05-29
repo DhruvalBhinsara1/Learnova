@@ -33,6 +33,8 @@ import { toast } from "react-hot-toast";
 import ExportDropdown from "@/components/ui/ExportDropdown";
 import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
 import { Navbar } from "./Navbar";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useCurriculum } from "@/hooks/useCurriculum";
 import BulkImportModal from "./dashboard/BulkImportModal";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
@@ -53,8 +55,6 @@ const InstituteDashboard = () => {
   );
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = (format) => {
@@ -93,25 +93,18 @@ const InstituteDashboard = () => {
     }, 500);
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => setInitialLoading(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Data fetched from /api/institute/stats
+  // Data fetched via useAttendance hook (replaces /api/institute/stats fetch block)
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState({
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    todayAttendance: 0,
-    weeklyTrend: "",
-    activeClasses: 0,
-    pendingRequests: 0,
-  });
-  const [classes, setClasses] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [attendanceRequests, setAttendanceRequests] = useState([]);
+  const {
+    dashboardData,
+    classes,
+    teachers,
+    attendanceRequests,
+    setAttendanceRequests,
+    loading: initialLoading,
+    error,
+  } = useAttendance({ role: "institute", user });
+  const { curriculum } = useCurriculum({ role: "institute", user });
 
   // Keep institute and currentUser as static placeholders
   // Mock institute data
@@ -132,50 +125,6 @@ const InstituteDashboard = () => {
     avatar:
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face",
   };
-
-  // Fetch institute stats from API
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchStats = async () => {
-      try {
-        if (!user) return;
-        const token = await user.getIdToken();
-        const res = await fetch("/api/institute/stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!mounted) return;
-
-        if (res.ok) {
-          const data = await res.json();
-
-          if (data.dashboardData) setDashboardData(data.dashboardData);
-          if (data.classes) setClasses(data.classes);
-          if (data.teachers) setTeachers(data.teachers);
-          if (data.attendanceRequests)
-            setAttendanceRequests(data.attendanceRequests);
-        } else {
-          setError("Failed to fetch institute data. Please try again.");
-        }
-      } catch (err) {
-        if (mounted) {
-          setError("Network error. Please check your connection and try again.");
-        }
-        console.error(err);
-      } finally {
-        if (mounted) {
-          setInitialLoading(false);
-        }
-      }
-    };
-
-    if (user) fetchStats();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user]);
 
   // Clock interval only
   useEffect(() => {

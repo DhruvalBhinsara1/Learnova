@@ -34,6 +34,8 @@ export default function AuthForm({
   onForgotPassword,
 }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const passwordStrength = useMemo(
     () => getPasswordStrength(password || ""),
@@ -58,6 +60,18 @@ export default function AuthForm({
       result = validateEmail(value);
     } else if (field === "password") {
       result = isLogin ? validateRequired(value, "Password") : validatePassword(value);
+      // Real-time synchronization check:
+      if (!isLogin && confirmPassword) {
+        if (value === confirmPassword) clearError("confirmPassword");
+        else setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+      }
+    } else if (field === "confirmPassword") {
+      // Direct verification block:
+      if (!value) {
+        result = "Please confirm your password";
+      } else if (value !== password) {
+        result = "Passwords do not match";
+      }
     }
 
     if (result !== true) {
@@ -114,19 +128,32 @@ export default function AuthForm({
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
-          {!isLogin && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Full Name</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFullName(value);
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!isLogin && password !== confirmPassword) {
+              setErrors((prev) => ({ ...prev, confirmPassword: "Passwords do not match" }));
+              return;
+            }
+            onSubmit(e);
+          }} 
+          className="space-y-6"
+        >
+  {!isLogin && (
+    <>
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-2">
+          Full Name
+        </label>
+        <input
+          type="text"
+          name="fullName"
+          placeholder="Enter your full name"
+          value={fullName}
+          onChange={(e) => {
+            const value = e.target.value;
+            setFullName(value);
+
                     if (errors.fullName) {
                       validateField("fullName", value);
                     }
@@ -215,28 +242,63 @@ export default function AuthForm({
                   errors.password ? "border-red-500/50" : "border-border"
                 }`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-            {errors.password && <p className="text-red-400 text-sm mt-1">{errors.password}</p>}
-          </div>
-
-          {isLogin && (
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={onForgotPassword}
-                className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
-              >
-                Forgot password?
-              </button>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </div>
+  {!isLogin && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                  const value = e.target.value;
+                  setConfirmPassword(value);
+                  // Run validation on every stroke so error clearing/setting is truly instant
+                  validateField("confirmPassword", value);
+                }}
+                  onBlur={(e) => validateField("confirmPassword", e.target.value)}
+                  className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground ${
+                    errors.confirmPassword ? "border-red-500/50" : "border-border"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-muted-foreground"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
           )}
+  {isLogin && (
+    <div className="text-right">
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        className="text-sm text-indigo-400 hover:text-indigo-300 font-medium"
+      >
+        Forgot password?
+      </button>
+    </div>
+  )}
 
           <button
             type="submit"

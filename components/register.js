@@ -12,6 +12,26 @@ import NextImage from "next/image";
 import { validateRequired, validateName } from "@/utils/formValidation";
 import { isValidEmail, suggestEmailCorrection } from "@/utils/emailValidation";
 import * as faceapi from "face-api.js";
+import { z } from "zod";
+
+// Strict validation schema matching issue #1567 criteria
+const registrationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, "Name must be at least 3 characters long"),
+  rollNo: z
+    .string()
+    .trim()
+    .min(8, "Roll Number must be at least 8 characters long")
+    .regex(/[A-Z]/, "Roll Number must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Roll Number must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Roll Number must contain at least one special character"),
+  email: z
+    .string()
+    .trim()
+    .email("Please enter a valid email address"),
+});
 
 export default function RegisterPage() {
   const MODEL_URL = "/models";
@@ -77,8 +97,9 @@ export default function RegisterPage() {
         } else {
           URL.revokeObjectURL(url);
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("Face registration failed:", err);
+        toast.error("Face registration failed. Please try again or use email signup.");
       }
     };
 
@@ -109,6 +130,18 @@ export default function RegisterPage() {
       setError(rollNoValidation);
       return;
     }
+
+    const hasUppercase = /[A-Z]/.test(rollNo); // Or substitute with password variable if available
+    const hasNumber = /[0-9]/.test(rollNo);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(rollNo);
+
+    if (rollNo.length < 8 || !hasUppercase || !hasNumber || !hasSpecialChar) {
+      const msg = "Validation failed: Must be 8+ characters with an uppercase letter, number, and special character.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     if (!isValidEmail(email)) {
   const suggestion = suggestEmailCorrection(email);
   const message = suggestion
@@ -271,7 +304,7 @@ setEmailSuggestion(null);
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => setName(e.target.value.trimStart())}
                     required
                     className="w-full p-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all duration-300 backdrop-blur-sm"
                   />

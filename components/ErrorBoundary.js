@@ -23,7 +23,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.children !== this.props.children && this.state.hasError) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({ 
         hasError: false, 
         error: null, 

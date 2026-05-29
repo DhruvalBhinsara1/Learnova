@@ -86,37 +86,55 @@ export const POST = withValidation(
 
     // Sync user to MongoDB so gamification (awardXp) and biometric labels
     // endpoints can locate the student by their Firebase UID.
-    try {
-      const mongoDB = await connectDb();
-      const now = new Date().toISOString();
+    const MAX_MONGO_RETRIES = 3;
+    const RETRY_BASE_DELAY_MS = 500;
 
-      await mongoDB.collection("users").updateOne(
-        { firebaseUid: decodedToken.uid },
-        {
-          $set: {
-            firebaseUid: decodedToken.uid,
-            email: decodedToken.email,
-            name: fullName,
-            fullName,
-            role,
-            lastLogin: now,
+    for (let attempt = 1; attempt <= MAX_MONGO_RETRIES; attempt++) {
+      try {
+        const mongoDB = await connectDb();
+        const now = new Date().toISOString();
+
+        await mongoDB.collection("users").updateOne(
+          { firebaseUid: decodedToken.uid },
+          {
+            $set: {
+              firebaseUid: decodedToken.uid,
+              email: decodedToken.email,
+              name: fullName,
+              fullName,
+              role,
+              lastLogin: now,
+            },
+            $setOnInsert: {
+              totalXp: 0,
+              currentLevel: 1,
+              xpToNextLevel: 100,
+              currentStreak: 0,
+              unlockedBadges: [],
+              attendanceHistory: [],
+              createdAt: now,
+            },
           },
-          $setOnInsert: {
-            totalXp: 0,
-            currentLevel: 1,
-            xpToNextLevel: 100,
-            currentStreak: 0,
-            unlockedBadges: [],
-            attendanceHistory: [],
-            createdAt: now,
-          },
-        },
-        { upsert: true }
-      );
-    } catch (mongoErr) {
-      // MongoDB sync is non-blocking — Firestore is the primary store.
-      // Log the error but do not fail the registration flow.
-      console.error("[set-role] MongoDB user sync failed:", mongoErr.message);
+          { upsert: true }
+        );
+        break;
+      } catch (mongoErr) {
+        if (attempt === MAX_MONGO_RETRIES) {
+          console.error("[set-role] MongoDB sync failed after", MAX_MONGO_RETRIES, "attempts:", mongoErr.message);
+          // Roll back Firestore profile and auth claims so the user is not left
+          // in a partial state (Firestore exists, MongoDB missing).
+          try {
+            await db.collection("users").doc(decodedToken.uid).delete();
+            await admin.auth().setCustomUserClaims(decodedToken.uid, {});
+          } catch (rollbackErr) {
+            console.error("[set-role] Rollback failed:", rollbackErr.message);
+          }
+          return jsonError("Account setup failed due to a server error. Please try again.", 500);
+        }
+        const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn("[set-role] MongoDB sync attempt", attempt, "failed, retrying in", delay, "ms:", mongoErr.message);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
 
     return jsonSuccess({ userProfile }, 201);

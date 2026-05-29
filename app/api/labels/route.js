@@ -21,7 +21,7 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   // Authentication and Role Verification
-  await requireRole(request, ["admin", "teacher", "student"]);
+  const { profile } = await requireRole(request, ["admin", "teacher", "student"]);
 
   // Search query — escape metacharacters to prevent ReDoS
   const { searchParams } = new URL(request.url);
@@ -55,9 +55,10 @@ export const GET = withErrorHandler(async (request) => {
     .limit(50)
     .toArray();
 
+  const showImageFlag = profile.role !== "student";
   const sanitizedUsers = allUsers.map(({ image, ...rest }) => ({
     ...rest,
-    hasImage: !!image,
+    ...(showImageFlag ? { hasImage: !!image } : {}),
   }));
 
   return jsonSuccess(sanitizedUsers, 200);

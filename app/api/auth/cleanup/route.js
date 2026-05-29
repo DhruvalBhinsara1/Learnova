@@ -2,6 +2,7 @@ import { jsonSuccess, jsonError } from "@/lib/api-response";
 import { withErrorHandler, authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { initializeFirebase } from "@/lib/firebase-admin";
 import admin from "firebase-admin";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -35,9 +36,13 @@ export const POST = withErrorHandler(async (request) => {
   try {
     initializeFirebase();
     
+    logger.info(`[auth-cleanup] Attempting to delete orphaned account: ${uid}`);
+    
     // Delete the user from Firebase Auth using Admin SDK
     // This bypasses the re-authentication requirement
     await admin.auth().deleteUser(uid);
+    
+    logger.info(`[auth-cleanup] Successfully deleted orphaned account: ${uid}`);
     
     return jsonSuccess({ 
       message: "Orphaned auth account deleted successfully",
@@ -46,13 +51,14 @@ export const POST = withErrorHandler(async (request) => {
   } catch (error) {
     // Don't throw if user doesn't exist - they may have been already cleaned up
     if (error.code === "auth/user-not-found") {
+      logger.warn(`[auth-cleanup] User ${uid} not found - may have been already cleaned up`);
       return jsonSuccess({ 
         message: "User already deleted or not found",
         uid 
       });
     }
 
-    console.error(`[auth-cleanup] Failed to delete orphaned account ${uid}:`, error.message);
+    logger.error(`[auth-cleanup] Failed to delete orphaned account ${uid}: ${error.message}`);
     
     // Log for manual cleanup but don't expose internal error details
     return jsonError("Failed to cleanup orphaned account. Please contact support.", 500);

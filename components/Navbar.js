@@ -133,7 +133,7 @@ export function Navbar() {
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [handleClickOutside]);
+  }, []);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -156,6 +156,20 @@ export function Navbar() {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+  const handleResize = () => {
+    // If the window is resized larger than mobile layouts, close the mobile menu
+    if (window.innerWidth >= 640) {
+      setIsMenuOpen(false);
+    }
+  };
+
+  window.addEventListener("resize", handleResize);
+
+  // ✅ Explicit arrow function hook return to safely purge registration on unmount
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -645,7 +659,7 @@ export function Navbar() {
                       key={item.key}
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition ...`}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-colors duration-200 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800`}
 
                     >
                       <item.icon className="h-4 w-4 text-zinc-400" />

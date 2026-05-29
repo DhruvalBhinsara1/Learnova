@@ -143,6 +143,7 @@ export default function Footer() {
               </div>
             </div>
           </div>
+
         </div>
 
         {/* Bottom Bar with Pill Elements */}
