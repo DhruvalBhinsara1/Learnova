@@ -223,3 +223,15 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "sync-attendance") {
+    return;
+  }
+
+  event.waitUntil(
+    syncAttendanceSW().catch((error) => {
+      console.error("[Service Worker] Background sync failed:", error);
+    })
+  );
+});
