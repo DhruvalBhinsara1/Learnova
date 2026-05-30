@@ -8,15 +8,15 @@ describe("ExceptionRequestsList Focus Trap and Accessibility", () => {
     exceptionRequests: [],
     isLoadingRequests: false,
     requestsError: null,
-    fetchAllRequests: jest.fn(),
+    fetchAllRequests: vi.fn(),
     showAllRequestsModal: false,
-    setShowAllRequestsModal: jest.fn(),
+    setShowAllRequestsModal: vi.fn(),
     allRequests: [],
-    handleExceptionRequest: jest.fn(),
+    handleExceptionRequest: vi.fn(),
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("does not render modal when showAllRequestsModal is false", () => {

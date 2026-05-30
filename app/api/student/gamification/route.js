@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { NotFoundError, AppError } from "@/lib/errors";
 import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { success } from "@/lib/api-response";
 
 /**
  * GET /api/student/gamification
@@ -49,5 +49,5 @@ export const GET = withErrorHandler(async (request) => {
     );
   }
 
-  return NextResponse.json(gamificationData, { status: 200 });
+  return success(gamificationData);
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { GraduationCap, ArrowLeft, Home, Sparkles, BookOpen } from "lucide-react";
@@ -15,6 +15,11 @@ const PARTICLES = [
 export default function NotFound() {
   const pathname = usePathname();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex items-center justify-center transition-colors duration-500">
@@ -70,8 +75,8 @@ export default function NotFound() {
           </p>
         </div>
 
-        {/* Current Path Indicator Tag */}
-        {pathname && (
+        {/* Current Path Indicator Tag — only rendered client-side to avoid SSR/hydration mismatch */}
+        {mounted && pathname && (
           <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 px-4 py-2.5 text-xs text-slate-500 dark:text-slate-400 backdrop-blur-md shadow-inner select-all">
             <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">Broken Path:</span>
             <code className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
@@ -94,7 +99,7 @@ export default function NotFound() {
           {/* Go to Dashboard */}
           <Link
             href="/student/dashboard"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-350 dark:hover:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 active:scale-95 text-slate-700 dark:text-slate-200 font-bold py-3.5 px-8 shadow-md transition-all duration-300 select-none group"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 text-slate-700 dark:text-slate-200 font-bold py-3.5 px-8 shadow-md transition-all duration-300 select-none group"
           >
             <BookOpen className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
             Go to Dashboard

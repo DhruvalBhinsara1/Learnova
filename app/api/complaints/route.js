@@ -1,6 +1,6 @@
 import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { AppError, ValidationError } from "@/lib/errors";
 import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
@@ -15,10 +15,12 @@ const complaintsSchema = z.object({
   priority: z.string().min(1, "Priority is required"),
 });
 
+const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
+
 export const POST = withErrorHandler(async (req) => {
   const decodedToken = await requireAuth(req);
 
-  const body = await req.json();
+  const body = await parseJSON(req, MAX_COMPLAINT_PAYLOAD_BYTES);
 
   const validation = complaintsSchema.safeParse(body);
   if (!validation.success) {

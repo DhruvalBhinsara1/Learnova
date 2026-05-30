@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/lib/firebaseConfig";
 import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 const modalInitialState = {
   isShortcutsOpen: false,
@@ -55,6 +56,8 @@ const LearnovaChatbot = dynamic(() => import("@/components/ChatBot"), {
 export default function ClientLayout() {
   const [modalState, dispatch] = useReducer(modalReducer, modalInitialState);
   const { user, userProfile } = useAuth();
+
+  useOfflineQueue();
 
   const handleSearch = useCallback(() => {
     dispatch({ type: "OPEN_SEARCH" });
@@ -126,9 +129,6 @@ export default function ClientLayout() {
           localStorage.setItem("learnova_site_streak", currentStreak.toString());
           localStorage.setItem("learnova_site_last_visit", lastVisit);
           localStorage.setItem("learnova_site_visit_history", JSON.stringify(history));
-
-          
-          console.log(`[streak-sync] Restored streak of ${currentStreak} days from Firestore profile.`);
         }
 
         // Case B: Process today's check-in if last visit is different
@@ -201,10 +201,6 @@ export default function ClientLayout() {
             siteLastVisit: lastVisit,
             siteVisitHistory: history,
           });
-
-          
-
-          console.log(`[streak-sync] Synced streak of ${currentStreak} days to Firestore.`);
         }
 
       } catch (error) {

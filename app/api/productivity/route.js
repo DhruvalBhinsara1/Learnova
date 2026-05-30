@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const MAX_ITEMS = 500;
 const MAX_AGENDA_DAYS = 60;
+const MAX_PRODUCTIVITY_PAYLOAD_BYTES = 1024 * 100;
 
 const taskSchema = z.object({
   id: z.union([z.string(), z.number()]),
@@ -84,7 +85,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const body = await request.json();
+  const body = await parseJSON(request, MAX_PRODUCTIVITY_PAYLOAD_BYTES);
 
   const validation = postSchema.safeParse(body);
   if (!validation.success) {

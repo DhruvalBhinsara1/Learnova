@@ -1,7 +1,8 @@
 import { connectDb } from "@/lib/mongodb";
 import { jsonSuccess } from "@/lib/api-response";
 import { z } from "zod";
-import xss from "xss";
+import { filterXSS } from "xss";
+
 import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
 import { AppError, ValidationError } from "@/lib/errors";
@@ -10,17 +11,19 @@ import { checkRateLimit } from "@/lib/rateLimit";
 // Force dynamic rendering to prevent build-time database connection errors
 export const dynamic = "force-dynamic";
 
+const textSanitizeOptions = {
+  whiteList: {},
+  stripIgnoreTag: true,
+  stripIgnoreTagBody: ["script", "style", "iframe", "object", "embed", "template"],
+};
+
 /**
- * Sanitizes incoming text streams to eliminate malicious script or markup tags 
- * while maintaining Markdown symbols for UI representation.
+ * Stores chat content as plain text/Markdown by stripping HTML markup instead of
+ * persisting escaped tags that later appear in conversation history.
  */
 const sanitizeText = (text) => {
   if (typeof text !== "string") return "";
-  return xss(text, {
-    whiteList: {}, // Strip all standard HTML tags completely
-    stripIgnoreTag: true,
-    stripIgnoreTagBody: ["script", "style", "iframe", "object", "embed"],
-  }).trim();
+  return filterXSS(text, textSanitizeOptions).trim();
 };
 
 const conversationSchema = z.object({

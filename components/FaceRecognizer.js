@@ -34,6 +34,7 @@ export default function FaceRecognizer({ authUser }) {
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
   const faceapiRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Animation and Liveness Refs
   const animationFrameId = useRef(null);
@@ -51,7 +52,7 @@ export default function FaceRecognizer({ authUser }) {
     error,
   } = useLabels(authUser);
 
-  const [message, setMessage] = useState("Loading models...");
+  const [message, setMessage] = useState("Loading AI models...");
   const [finished, setFinished] = useState(false);
   const [detectedPerson, setDetectedPerson] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,12 +72,13 @@ export default function FaceRecognizer({ authUser }) {
     if (typeof window === "undefined") return;
 
     const handleOnline = () => {
+      if (!isMounted.current) return;
       setIsOffline(false);
-      // Automatically attempt to sync local outbox records when we go online
       syncAttendanceQueue();
     };
 
     const handleOffline = () => {
+      if (!isMounted.current) return;
       setIsOffline(true);
     };
 
@@ -103,11 +105,13 @@ export default function FaceRecognizer({ authUser }) {
         cancelAnimationFrame(animationFrameId.current);
       }
 
+      setMessage("Requesting camera permission...");
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode },
       });
 
-      if (!isMounted.current) {
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted) {
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -117,18 +121,17 @@ export default function FaceRecognizer({ authUser }) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          if (!isMounted.current) return;
+          if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
           videoRef.current
             .play()
             .catch((e) => console.warn("Play interrupted", e));
           setIsLoading(false);
 
-          // Reset Liveness State
           setLivenessState("DETECTING_FACE");
           blinkStateRef.current = {
             isEyeClosed: false,
             blinkCount: 0,
-            requiredBlinks: Math.floor(Math.random() * 2) + 1, // 1 or 2 random blinks
+            requiredBlinks: Math.floor(Math.random() * 2) + 1,
             lastBlinkTime: 0,
           };
           setBlinkPrompt("");
@@ -141,11 +144,11 @@ export default function FaceRecognizer({ authUser }) {
       setFinished(false);
       setAttendanceState("idle");
     } catch (err) {
-      if (!isMounted.current) return;
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
       setIsLoading(false);
       if (err.name === "NotAllowedError") {
         setMessage(
-          "Camera access is blocked! Enable camera permissions in browser settings.",
+          "Camera access denied. Please enable camera permissions in browser settings.",
         );
       } else {
         setMessage("Cannot access camera ❌");
@@ -160,11 +163,12 @@ export default function FaceRecognizer({ authUser }) {
 
   useEffect(() => {
     isMounted.current = true;
+    abortControllerRef.current = new AbortController();
 
     const loadModels = async () => {
       try {
-        if (!isMounted.current) return;
-        setMessage("Downloading ML models...");
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+        setMessage("Loading AI models...");
         const faceapi = await import("face-api.js");
         faceapiRef.current = faceapi;
 
@@ -174,11 +178,11 @@ export default function FaceRecognizer({ authUser }) {
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
 
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
         setMessage("Models loaded ✅ Starting webcam...");
         startVideo();
       } catch (err) {
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
         setMessage("Failed to load models.");
         setIsLoading(false);
         setFinished(true);
@@ -187,12 +191,13 @@ export default function FaceRecognizer({ authUser }) {
 
     const startVideo = async () => {
       try {
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
+        setMessage("Requesting camera permission...");
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode },
         });
 
-        if (!isMounted.current) {
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -202,7 +207,7 @@ export default function FaceRecognizer({ authUser }) {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
-            if (!isMounted.current) return;
+            if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
             videoRef.current
               .play()
               .catch((e) => console.warn("Play interrupted", e));
@@ -210,7 +215,7 @@ export default function FaceRecognizer({ authUser }) {
             setMessage("Building face models...");
 
             buildFaceMatcher().then(() => {
-              if (!isMounted.current) return;
+              if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
               setMessage("Looking for faces...");
               setLivenessState("DETECTING_FACE");
 
@@ -221,10 +226,14 @@ export default function FaceRecognizer({ authUser }) {
           };
         }
       } catch (err) {
-        if (!isMounted.current) return;
-        setMessage("Cannot access webcam ❌");
-        setFinished(true);
+        if (!isMounted.current || abortControllerRef.current.signal.aborted) return;
         setIsLoading(false);
+        if (err.name === "NotAllowedError" || err.message?.includes("Permission denied")) {
+          setMessage("Camera access denied. Please enable camera permissions in browser settings.");
+        } else {
+          setMessage("Cannot access webcam ❌");
+        }
+        setFinished(true);
       }
     };
 
@@ -234,6 +243,11 @@ export default function FaceRecognizer({ authUser }) {
 
     return () => {
       isMounted.current = false;
+
+      // Cancel all async operations
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
@@ -250,14 +264,9 @@ export default function FaceRecognizer({ authUser }) {
         videoRef.current.removeAttribute("src");
         videoRef.current.load();
       }
-
-      // CRITICAL FIX: Removed tf.disposeVariables() from here.
-      // Toggling the camera (facingMode) triggers this cleanup. We must NOT destroy the 
-      // heavy ML models from memory just to flip the camera track.
     };
   }, [labelsLoading, error, labels, facingMode]);
 
-  // Handle ultimate cleanup only on component unmount
   useEffect(() => {
     return () => {
       if (faceapiRef.current?.tf?.disposeVariables) {
@@ -268,6 +277,7 @@ export default function FaceRecognizer({ authUser }) {
 
   const buildFaceMatcher = async () => {
     if (!labels || labels.length === 0) return;
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
 
     const faceapi = await import("face-api.js");
     faceapiRef.current = faceapi;
@@ -276,7 +286,7 @@ export default function FaceRecognizer({ authUser }) {
       await Promise.all(
         labels.map(async (student) => {
           try {
-            if (!isMounted.current) return null;
+            if (!isMounted.current || abortControllerRef.current?.signal.aborted) return null;
             // Check if pre-calculated face descriptor exists in the database
             if (
               student.faceDescriptor &&
@@ -288,17 +298,16 @@ export default function FaceRecognizer({ authUser }) {
               ]);
             }
 
-            // Fallback for legacy profiles: download image and extract descriptor
             if (!student.hasImage) return null;
             const imgUrl = `/api/images?id=${student._id}`;
             const img = await faceapi.fetchImage(imgUrl);
-            if (!isMounted.current) return null;
+            if (!isMounted.current || abortControllerRef.current?.signal.aborted) return null;
             const detection = await faceapi
               .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
               .withFaceLandmarks()
               .withFaceDescriptor();
 
-            if (detection) {
+            if (detection && isMounted.current) {
               return new faceapi.LabeledFaceDescriptors(student.name, [
                 detection.descriptor,
               ]);
@@ -315,7 +324,7 @@ export default function FaceRecognizer({ authUser }) {
       )
     ).filter(Boolean);
 
-    if (!isMounted.current) return;
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
     cachedDescriptorsRef.current = labeledFaceDescriptors;
 
     if (!labeledFaceDescriptors.length) {
@@ -335,33 +344,36 @@ export default function FaceRecognizer({ authUser }) {
       !videoRef.current ||
       !canvasRef.current ||
       !faceMatcherRef.current ||
-      !isMounted.current
+      !isMounted.current ||
+      abortControllerRef.current?.signal.aborted
     ) {
       return;
     }
 
     const faceapi = await import("face-api.js");
     faceapiRef.current = faceapi;
-    if (!isMounted.current) return;
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
     const video = videoRef.current;
 
-    // Ensure video is playing and has valid dimensions before processing
     if (video.paused || video.ended || !video.videoWidth) {
-      animationFrameId.current = requestAnimationFrame(processVideo);
+      if (isMounted.current && !finished) {
+        animationFrameId.current = requestAnimationFrame(processVideo);
+      }
       return;
     }
 
     const now = Date.now();
-    // Throttle model execution to save CPU and battery
     if (now - lastDetectionTime.current < PROCESSING_INTERVAL_MS) {
-      animationFrameId.current = requestAnimationFrame(processVideo);
+      if (isMounted.current && !finished) {
+        animationFrameId.current = requestAnimationFrame(processVideo);
+      }
       return;
     }
     lastDetectionTime.current = now;
 
     const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    // Fix: Use getBoundingClientRect to match responsive Tailwind w-full scaling on mobile screens
     const rect = video.getBoundingClientRect();
     const displaySize = {
       width: rect.width || video.videoWidth || 720,
@@ -376,6 +388,8 @@ export default function FaceRecognizer({ authUser }) {
       .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
       .withFaceLandmarks()
       .withFaceDescriptors();
+
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
 
     const resizedDetections = faceapi.resizeResults(detections, displaySize);
     const ctx = canvas.getContext("2d");
@@ -392,7 +406,6 @@ export default function FaceRecognizer({ authUser }) {
 
       const box = face.detection.box;
 
-      // Draw detection box
       ctx.strokeStyle = label !== "Unknown" ? "#10b981" : "#ef4444";
       ctx.lineWidth = 3;
       ctx.strokeRect(box.x, box.y, box.width, box.height);
@@ -414,7 +427,6 @@ export default function FaceRecognizer({ authUser }) {
         const person = labels.find((l) => l.name === label);
         setDetectedPerson(person || null);
 
-        // Liveness State Machine Logic
         setLivenessState((prevState) => {
           if (prevState === "DETECTING_FACE" || prevState === "IDLE") {
             setMessage(`Recognized: ${label}. Checking liveness...`);
@@ -468,7 +480,7 @@ export default function FaceRecognizer({ authUser }) {
         }
       }
     } else {
-      if (isMounted.current) {
+      if (isMounted.current && !abortControllerRef.current?.signal.aborted) {
         if (livenessState !== "AUTHENTICATED") {
           setMessage("No face detected");
           setLivenessState("DETECTING_FACE");
@@ -479,11 +491,11 @@ export default function FaceRecognizer({ authUser }) {
       }
     }
 
-    if (isMounted.current && !finished) {
+    if (isMounted.current && !finished && !abortControllerRef.current?.signal.aborted) {
       // Loop execution only if not finished
       // To prevent race conditions, check if we just transitioned to AUTHENTICATED
       setLivenessState((currentLiveness) => {
-        if (currentLiveness !== "AUTHENTICATED") {
+        if (currentLiveness !== "AUTHENTICATED" && isMounted.current) {
           animationFrameId.current = requestAnimationFrame(processVideo);
         }
         return currentLiveness;
@@ -491,10 +503,6 @@ export default function FaceRecognizer({ authUser }) {
     }
   };
 
-  /**
-   * Safe analytics page view logging. Wrapped in a try-catch block
-   * to prevent runtime crashes caused by client-side ad-blockers blocking Firebase Analytics.
-   */
   useEffect(() => {
     if (analytics) {
       try {
@@ -519,6 +527,9 @@ export default function FaceRecognizer({ authUser }) {
         return;
       }
       if (isSubmittingRef.current) {
+        return;
+      }
+      if (!isMounted.current || abortControllerRef.current?.signal.aborted) {
         return;
       }
 
@@ -546,7 +557,7 @@ export default function FaceRecognizer({ authUser }) {
           confidenceScore: confidence,
         });
 
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
 
         if (result.queuedOffline) {
           setAttendanceState("queued-offline");
@@ -559,7 +570,7 @@ export default function FaceRecognizer({ authUser }) {
           );
         }
       } catch (err) {
-        if (!isMounted.current) return;
+        if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
         setAttendanceState("error");
         setMessage(err.message || "Could not save attendance.");
       }
@@ -570,7 +581,6 @@ export default function FaceRecognizer({ authUser }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-black text-white p-4 relative">
-      {/* Offline Alert Banner */}
       {isOffline && (
         <div className="w-full max-w-4xl mb-4 bg-amber-500/10 backdrop-blur-md border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-amber-500/5 animate-in fade-in slide-in-from-top-4 duration-300 relative z-50">
           <div className="flex items-center gap-3">
@@ -607,7 +617,6 @@ export default function FaceRecognizer({ authUser }) {
           className="absolute top-0 left-0 w-full h-full pointer-events-none z-20 object-cover"
         />
 
-        {/* Liveness Overlay */}
         {livenessState === "VERIFYING_LIVENESS" && (
           <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
             <div className="relative flex items-center justify-center">

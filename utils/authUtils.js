@@ -110,8 +110,27 @@ export const createUserProfile = async (user, role, additionalData = {}) => {
     );
   }
 
+  try {
+    // Force refresh the token immediately after server-side custom claim assignment.
+    // This ensures the middleware receives an auth token with the role claim
+    // before the first redirect, avoiding expensive edge-runtime fallback lookups.
+    await user.getIdToken(true);
+  } catch (tokenError) {
+    console.error(
+      "[createUserProfile] Failed to refresh auth token after role assignment:",
+      tokenError?.message || tokenError,
+    );
+    throw new Error(
+      "Failed to update authentication token after signup. Please try again."
+    );
+  }
+
   // Initialize their empty dashboard stats
-  await initializeUserStats(user.uid);
+  try {
+    await initializeUserStats(user.uid);
+  } catch (error) {
+    console.log("Stats init failed", error);
+  }
 
   return data.data.userProfile;
 };

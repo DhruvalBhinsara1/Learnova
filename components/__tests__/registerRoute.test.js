@@ -4,13 +4,13 @@ import { put, del } from "@vercel/blob";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { checkRateLimit } from "@/lib/rateLimit";
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn(),
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn(),
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
-    json: jest.fn().mockImplementation((body, init) => {
+    json: vi.fn().mockImplementation((body, init) => {
       return {
         status: init?.status || 200,
         json: async () => body,
@@ -20,17 +20,17 @@ jest.mock("next/server", () => ({
   },
 }));
 
-jest.mock("@vercel/blob", () => ({
-  put: jest.fn(),
-  del: jest.fn(),
+vi.mock("@vercel/blob", () => ({
+  put: vi.fn(),
+  del: vi.fn(),
 }));
 
-jest.mock("@/lib/mongodb", () => ({
-  connectDb: jest.fn(),
+vi.mock("@/lib/mongodb", () => ({
+  connectDb: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  verifyFirebaseToken: jest.fn(),
+vi.mock("@/lib/firebase-admin", () => ({
+  verifyFirebaseToken: vi.fn(),
 }));
 
 describe("POST /api/register - Authentication, Rollback, and Validation Security Tests", () => {
@@ -38,7 +38,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
   let mockInsertOne;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true });
 
     verifyFirebaseToken.mockImplementation(async (token) => {
@@ -46,14 +46,14 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
       return { uid: "mock-uid", email: token };
     });
 
-    mockFindOne = jest.fn();
-    mockInsertOne = jest.fn();
+    mockFindOne = vi.fn();
+    mockInsertOne = vi.fn();
 
     connectDb.mockResolvedValue({
-      collection: jest.fn().mockReturnValue({
+      collection: vi.fn().mockReturnValue({
         findOne: mockFindOne,
         insertOne: mockInsertOne,
-        createIndex: jest.fn().mockResolvedValue({}),
+        createIndex: vi.fn().mockResolvedValue({}),
       }),
     });
 
@@ -77,10 +77,10 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     const mockFileObj = Object.create(BaseClass.prototype);
     Object.defineProperty(mockFileObj, "type", { value: mimeType, writable: true, enumerable: true, configurable: true });
     Object.defineProperty(mockFileObj, "size", { value: size, writable: true, enumerable: true, configurable: true });
-    Object.defineProperty(mockFileObj, "arrayBuffer", { value: jest.fn().mockResolvedValue(buffer), writable: true, enumerable: true, configurable: true });
+    Object.defineProperty(mockFileObj, "arrayBuffer", { value: vi.fn().mockResolvedValue(buffer), writable: true, enumerable: true, configurable: true });
     Object.defineProperty(mockFileObj, "slice", {
-      value: jest.fn().mockReturnValue({
-        arrayBuffer: jest.fn().mockResolvedValue(buffer),
+      value: vi.fn().mockReturnValue({
+        arrayBuffer: vi.fn().mockResolvedValue(buffer),
       }),
       writable: true,
       enumerable: true,
@@ -98,7 +98,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
     }
     return {
       headers: {
-        get: jest.fn().mockImplementation((name) => {
+        get: vi.fn().mockImplementation((name) => {
           if (name.toLowerCase() === "authorization") {
             return authHeader;
           }
@@ -108,7 +108,7 @@ describe("POST /api/register - Authentication, Rollback, and Validation Security
           return null;
         }),
       },
-      formData: jest.fn().mockResolvedValue({
+      formData: vi.fn().mockResolvedValue({
         get: (key) => data[key],
       }),
       headers: {

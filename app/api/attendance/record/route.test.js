@@ -2,38 +2,62 @@ import { POST } from "./route";
 import { authenticateRequest, parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
+import { assertApiError } from "@/testUtils/assertApiError";
 
-jest.mock("@/lib/error-handler", () => ({
-  authenticateRequest: jest.fn(),
-  withErrorHandler: (handler) => handler,
-  parseJSON: jest.fn(),
+vi.mock("@/lib/error-handler", () => {
+  const { AppError } = require("@/lib/errors");
+  return {
+    authenticateRequest: vi.fn(),
+    withErrorHandler: (handler) => {
+      return async (request, ...args) => {
+        try {
+          return await handler(request, ...args);
+        } catch (error) {
+          if (error instanceof AppError) {
+            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
+            return {
+              status: error.statusCode,
+              json: async () => ({ error: payload }),
+            };
+          }
+          return {
+            status: 500,
+            json: async () => ({ error: error.message || "Internal server error" }),
+          };
+        }
+      };
+    },
+    parseJSON: vi.fn(),
+  };
+});
+
+vi.mock("@/lib/rateLimit", () => ({
+  checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
-jest.mock("@/lib/rateLimit", () => ({
-  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
+vi.mock("@/lib/firebase-admin", () => ({
+  initFirebaseAdmin: vi.fn(),
+  getUserProfile: vi.fn(),
 }));
 
-jest.mock("@/lib/firebase-admin", () => ({
-  initFirebaseAdmin: jest.fn(),
-  getUserProfile: jest.fn(),
+vi.mock("@/lib/gamification-service", () => ({
+  awardXp: vi.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
 }));
 
-jest.mock("@/lib/gamification-service", () => ({
-  awardXp: jest.fn().mockResolvedValue({ xpAwarded: 50, newLevel: null }),
+vi.mock("@/lib/dateUtils", () => ({
+  getLocalDateKey: vi.fn(() => "2026-05-25"),
 }));
 
-jest.mock("@/lib/dateUtils", () => ({
-  getLocalDateKey: jest.fn(() => "2026-05-25"),
-}));
-
-jest.mock("firebase-admin/firestore", () => ({
-  getFirestore: jest.fn(),
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: vi.fn(),
   FieldValue: {
-    serverTimestamp: jest.fn(() => "server-timestamp"),
+    serverTimestamp: vi.fn(() => "server-timestamp"),
   },
 }));
 
-jest.mock("next/server", () => ({
+vi.mock("next/server", () => ({
   NextResponse: {
     json: (body, init = {}) => ({
       status: init.status ?? 200,
@@ -44,8 +68,27 @@ jest.mock("next/server", () => ({
 
 describe("attendance record route", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
+
+  const createMockRequest = (headers = {}, cookies = {}) => {
+    const headersMap = new Map(
+      Object.entries({
+        "x-forwarded-for": "127.0.0.1",
+        authorization: "Bearer test",
+        ...headers,
+      })
+    );
+    return {
+      headers: {
+        get: (key) => headersMap.get(key.toLowerCase()) || null,
+      },
+      cookies: {
+        get: (key) => cookies[key] || null,
+      },
+    };
+  };
 
   test("writes attendance to Firestore with canonical doc id + instituteId using transaction", async () => {
     authenticateRequest.mockResolvedValue({ uid: "user-123" });
@@ -64,27 +107,21 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: false });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: false });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      headers: new Headers([["authorization", "Bearer test"]]),
-      cookies: { get: jest.fn() },
-    });
+    const response = await POST(createMockRequest());
 
-    expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toEqual({
-      success: true,
-      data: { alreadyRecorded: false },
-    });
+    const body = await assertApiSuccess(response, 201);
+    expect(body.data).toEqual({ alreadyRecorded: false });
 
     expect(collectionRef.doc).toHaveBeenCalledWith("user-123_2026-05-25");
     expect(transactionGet).toHaveBeenCalledWith(docRef);
@@ -122,31 +159,83 @@ describe("attendance record route", () => {
     });
 
     const docRef = {};
-    const collectionRef = { doc: jest.fn(() => docRef) };
-    const transactionSet = jest.fn();
-    const transactionGet = jest.fn().mockResolvedValue({ exists: true });
+    const collectionRef = { doc: vi.fn(() => docRef) };
+    const transactionSet = vi.fn();
+    const transactionGet = vi.fn().mockResolvedValue({ exists: true });
 
     getFirestore.mockReturnValue({
-      runTransaction: jest.fn(async (callback) => {
+      runTransaction: vi.fn(async (callback) => {
         return callback({ get: transactionGet, set: transactionSet });
       }),
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
-    const response = await POST({
-      headers: new Headers([["authorization", "Bearer test"]]),
-      cookies: { get: jest.fn() },
-    });
+    const response = await POST(createMockRequest());
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      success: true,
-      data: { alreadyRecorded: true },
-    });
+    const body = await assertApiSuccess(response, 200);
+    expect(body.data).toEqual({ alreadyRecorded: true });
 
     expect(collectionRef.doc).toHaveBeenCalledWith("user-123_2026-05-25");
     expect(transactionGet).toHaveBeenCalledWith(docRef);
     expect(transactionSet).not.toHaveBeenCalled();
+  });
+
+  test("rejects request if unauthorized", async () => {
+    const { UnauthorizedError } = require("@/lib/errors");
+    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+
+    const response = await POST(createMockRequest());
+    await assertApiError(response, 401, "Unauthorized");
+  });
+
+  test("rejects request with 403 Forbidden if attempting to submit for another user", async () => {
+    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    parseJSON.mockResolvedValue({
+      userId: "another-user-456",
+      studentName: "Client Name",
+      email: "client@example.com",
+      confidenceScore: 80,
+      date: "2026-05-25",
+    });
+
+    const response = await POST(createMockRequest());
+    await assertApiError(response, 403, "Forbidden: Cannot submit attendance for another user");
+  });
+
+  test("rejects request with 400 Bad Request if confidence score is invalid or below threshold", async () => {
+    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+
+    // Scenario 1: below 60
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      confidenceScore: 59,
+    });
+    let response = await POST(createMockRequest());
+    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+
+    // Scenario 2: above 100
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      confidenceScore: 101,
+    });
+    response = await POST(createMockRequest());
+    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+
+    // Scenario 3: NaN
+    parseJSON.mockResolvedValue({
+      userId: "user-123",
+      confidenceScore: "not-a-number",
+    });
+    response = await POST(createMockRequest());
+    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+  });
+
+  test("rejects request if rate limit exceeded", async () => {
+    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    checkRateLimit.mockResolvedValue({ allowed: false });
+
+    const response = await POST(createMockRequest());
+    await assertApiError(response, 429, "Too many attempts. Please try again later.");
   });
 
   test("simulates concurrent double-click requests and guarantees single write via OCC retry simulation", async () => {
@@ -166,21 +255,15 @@ describe("attendance record route", () => {
     });
 
     const docRef = "user-123_2026-05-25";
-    const collectionRef = { doc: jest.fn(() => docRef) };
+    const collectionRef = { doc: vi.fn(() => docRef) };
 
     const dbStore = new Map();
-    const transactionSet = jest.fn();
+    const transactionSet = vi.fn();
 
-    // High-fidelity OCC Simulation:
-    // If two requests read concurrently, both see 'exists === false'.
-    // One succeeds, writes to the dbStore.
-    // The second transaction will detect that the store has been updated since its read phase,
-    // abort, retry, read again, see 'exists === true', and return without writing.
-    const runTransaction = jest.fn(async (callback) => {
+    const runTransaction = vi.fn(async (callback) => {
       let attempts = 0;
       while (attempts < 5) {
         attempts++;
-        // Interleave the operations with a small async tick
         await new Promise((resolve) => setTimeout(resolve, 5));
 
         const get = async (ref) => ({ exists: dbStore.has(ref) });
@@ -194,10 +277,8 @@ describe("attendance record route", () => {
 
         if (pendingWrite) {
           if (dbStore.has(pendingWrite.ref)) {
-            // Collision detected - retry callback!
             continue;
           }
-          // Successful transaction commit
           dbStore.set(pendingWrite.ref, pendingWrite.data);
           transactionSet(pendingWrite.ref, pendingWrite.data);
         }
@@ -207,22 +288,14 @@ describe("attendance record route", () => {
 
     getFirestore.mockReturnValue({
       runTransaction,
-      collection: jest.fn(() => collectionRef),
+      collection: vi.fn(() => collectionRef),
     });
 
-    // Execute double-click / rapid concurrent requests in parallel
     const [response1, response2] = await Promise.all([
-      POST({
-        headers: new Headers([["authorization", "Bearer test"]]),
-        cookies: { get: jest.fn() },
-      }),
-      POST({
-        headers: new Headers([["authorization", "Bearer test"]]),
-        cookies: { get: jest.fn() },
-      }),
+      POST(createMockRequest()),
+      POST(createMockRequest()),
     ]);
 
-    // One of the concurrent requests must succeed and create (201), the other should return alreadyRecorded (200)
     const statusCodes = [response1.status, response2.status].sort();
     expect(statusCodes).toEqual([200, 201]);
 
@@ -232,7 +305,6 @@ describe("attendance record route", () => {
     const results = [resJson1.data.alreadyRecorded, resJson2.data.alreadyRecorded].sort();
     expect(results).toEqual([false, true]);
 
-    // Firestore must have exactly 1 record committed
     expect(dbStore.size).toBe(1);
     expect(dbStore.has(docRef)).toBe(true);
     expect(transactionSet).toHaveBeenCalledTimes(1);

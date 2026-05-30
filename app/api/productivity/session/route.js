@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
-import { withErrorHandler } from "@/lib/error-handler";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { ValidationError, AppError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
 const DEFAULT_DAYS_BACK = 7;
+const MAX_SESSION_PAYLOAD_BYTES = 1024 * 10;
 
 const sessionSchema = z.object({
   duration: z
@@ -37,7 +38,7 @@ export const POST = withErrorHandler(async (request) => {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
 
-  const body = await request.json();
+  const body = await parseJSON(request, MAX_SESSION_PAYLOAD_BYTES);
 
   const validation = sessionSchema.safeParse(body);
   if (!validation.success) {

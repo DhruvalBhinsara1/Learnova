@@ -117,7 +117,7 @@ export default function CourseFilters() {
                 className={`inline-flex items-center gap-2 px-4.5 py-2.5 rounded-full text-sm font-semibold tracking-wide border cursor-pointer select-none transition-all duration-300 active:scale-95 ${
                   isSelected
                     ? "bg-gradient-to-r from-indigo-500 via-indigo-600 to-indigo-700 text-white border-transparent shadow-lg shadow-indigo-600/20"
-                    : "bg-slate-900/60 border-slate-850 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300 hover:text-white"
+                    : "bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300 hover:text-white"
                 }`}
               >
                 <Icon className={`w-4 h-4 transition-transform duration-300 ${isSelected ? "scale-110" : ""}`} />

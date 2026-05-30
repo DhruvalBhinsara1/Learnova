@@ -17,10 +17,40 @@ const setCookie = (name, value, days = 7) => {
   }
 };
 
+const AUTH_TOKEN_COOKIE_DURATION_HOURS = 1;
+
+const setAuthTokenCookie = (token) => {
+  setCookie("authToken", token, AUTH_TOKEN_COOKIE_DURATION_HOURS / 24);
+};
+
 const deleteCookie = (name) => {
   if (typeof window !== "undefined") {
     const isSecure = process.env.NODE_ENV === "production";
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${isSecure ? "; Secure" : ""}`;
+  }
+};
+
+const AUTH_SENSITIVE_CACHE_PATTERNS = [
+  /auth/i,
+  /user/i,
+  /session/i,
+  /token/i,
+  /profile/i,
+  /secure/i,
+];
+
+export const clearAuthSensitiveCaches = async () => {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+
+  try {
+    const cacheKeys = await caches.keys();
+    const authCacheKeys = cacheKeys.filter((key) =>
+      AUTH_SENSITIVE_CACHE_PATTERNS.some((pattern) => pattern.test(key))
+    );
+
+    await Promise.all(authCacheKeys.map((key) => caches.delete(key)));
+  } catch (cacheErr) {
+    console.warn("Failed to clear auth-sensitive caches:", cacheErr);
   }
 };
 
@@ -74,10 +104,10 @@ export const useAuth = () => {
           tokenRefreshIntervalRef.current = setInterval(async () => {
             try {
               const freshToken = await firebaseUser.getIdToken(true);
-              setCookie("authToken", freshToken, 7);
+              setAuthTokenCookie(freshToken);
             } catch (tokenError) {
               // Network error during background refresh; the next interval will retry.
-              console.debug("Token refresh failed (will retry):", tokenError.message);
+              console.debug("Token refresh failed (will retry):", tokenError?.message);
             }
           }, 55 * 60 * 1000);
 
@@ -91,7 +121,7 @@ export const useAuth = () => {
 
                 // Sync auth token and role in cookies
                 const token = await firebaseUser.getIdToken();
-                setCookie("authToken", token, 7);
+                setAuthTokenCookie(token);
                 setCookie("userRole", profileData.role, 7);
               } else {
                 // User exists in Auth but no profile in Firestore yet
@@ -118,17 +148,8 @@ export const useAuth = () => {
           deleteCookie("authToken");
           deleteCookie("userRole");
 
-          // Clear PWA caches on logout to prevent data leakage on shared devices
-          if (typeof window !== "undefined" && "caches" in window) {
-            try {
-              const cacheKeys = await caches.keys();
-              await Promise.all(
-                cacheKeys.map((key) => caches.delete(key))
-              );
-            } catch (cacheErr) {
-              console.warn("Failed to clear PWA caches on auth state change:", cacheErr);
-            }
-          }
+          // Clear only auth-sensitive caches and preserve static/app shell caches
+          await clearAuthSensitiveCaches();
           setLoading(false);
         }
 
@@ -170,17 +191,8 @@ export const useAuth = () => {
       deleteCookie("authToken");
       deleteCookie("userRole");
 
-      // Clear all PWA caches to prevent cached API responses from persisting after logout
-      if (typeof window !== "undefined" && "caches" in window) {
-        try {
-          const cacheKeys = await caches.keys();
-          await Promise.all(
-            cacheKeys.map((key) => caches.delete(key))
-          );
-        } catch (cacheErr) {
-          console.warn("Failed to clear PWA caches on sign out:", cacheErr);
-        }
-      }
+      // Clear only auth-sensitive caches and preserve static/app shell caches
+      await clearAuthSensitiveCaches();
     } catch (err) {
       setError(err.message);
     }

@@ -27,7 +27,7 @@ export function AgendaListSection({
       whileHover={{ y: -4 }}
     >
       <div className="flex items-center gap-2 mb-4">
-        <CalendarDays className="w-5 h-5 text-purple-300" />
+        <CalendarDays className={`w-5 h-5 ${isDark ? "text-purple-300" : "text-purple-600"}`} />
         <div>
           <h3 className="text-xl font-semibold">Agenda</h3>
           <p className={`text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>{selectedDateLabel}</p>
@@ -49,10 +49,26 @@ export function AgendaListSection({
               key={block.label}
               type="button"
               onClick={() => setAgendaLabel(block.label)}
+
               className={`px-3 py-1 rounded-full text-xs border transition ${agendaLabel === block.label
-                  ? "border bg-white/10 border-white/20 text-white"
-                  : "border border-white/10 text-slate-300"
+                  ? isDark
+                    ? "bg-white/10 border-white/20 text-white"
+                    : "bg-slate-100 border-slate-300 text-slate-900"
+                  : isDark
+                    ? "border-white/10 text-slate-300 hover:text-white"
+                    : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
                 }`}
+
+             className={`px-3 py-1 rounded-full text-xs border transition ${
+  agendaLabel === block.label
+    ? isDark
+      ? "bg-white/10 border-white/20 text-white"
+      : "bg-slate-200 border-slate-400 text-slate-900"
+    : isDark
+      ? "border-white/10 text-slate-300 hover:text-white"
+      : "border-slate-300 text-slate-700 hover:text-slate-900 bg-white/60"
+}`}
+
             >
               <span className={`inline-block h-2 w-2 rounded-full mr-2 ${block.color}`} />
               {block.label}
@@ -85,7 +101,7 @@ export function AgendaListSection({
               >
                 <p className="font-medium">{item.text}</p>
                 <p className={`text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>{item.time}</p>
-                <p className="text-xs text-purple-200">{item.label}</p>
+                <p className={`text-xs ${isDark ? "text-purple-200" : "text-purple-700"}`}>{item.label}</p>
               </div>
               <div className={`flex items-center gap-1 text-xs ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                 <button

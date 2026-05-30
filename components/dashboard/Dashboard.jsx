@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import SkeletonCard from "../ui/SkeletonCard";
 import EmptyState from "../ui/EmptyState";
 import CircularProgress from "../ui/CircularProgress";
+import StreakTracker from "../ui/StreakTracker";
+import Image from "next/image";
 
 /**
  * Mock data representing courses / AI-generated content
@@ -89,9 +91,12 @@ const Dashboard = () => {
         {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Student Dashboard
-            </h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                Student Dashboard
+              </h1>
+              <StreakTracker />
+            </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Toggle between views to inspect the loading states and the empty states.
             </p>
@@ -182,10 +187,12 @@ const Dashboard = () => {
                   {/* Footer Area */}
                   <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-slate-800/60">
                     <div className="flex items-center space-x-2">
-                      <img
+                      <Image
                         src={course.author.avatar}
                         alt={course.author.name}
-                        className="w-8 h-8 rounded-full object-cover border border-slate-100 dark:border-slate-800"
+                        width={32}
+                        height={32}
+                        className="rounded-full object-cover border border-slate-100 dark:border-slate-800"
                       />
                       <div className="flex flex-col">
                         <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">

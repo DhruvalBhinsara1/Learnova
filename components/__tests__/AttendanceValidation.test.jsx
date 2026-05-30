@@ -4,38 +4,38 @@ import userEvent from "@testing-library/user-event";
 import AttendanceValidation from "../AttendanceValidation";
 
 // Mock next/navigation
-jest.mock("next/navigation", () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
 }));
 
 // Mock useAuth hook
-jest.mock("@/hooks/useAuth", () => ({
+vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: {
       email: "student@example.com",
       displayName: "Test Student",
-      getIdToken: jest.fn().mockResolvedValue("mock-token"),
+      getIdToken: vi.fn().mockResolvedValue("mock-token"),
     },
   }),
 }));
 
 // Mock calculateDistance utility
-jest.mock("@/utils/authUtils", () => ({
+vi.mock("@/utils/authUtils", () => ({
   calculateDistance: () => 10,
 }));
 
 describe("AttendanceValidation Exception Modal Focus Trap", () => {
-  const mockOnValidationSuccess = jest.fn();
+  const mockOnValidationSuccess = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     
     // Mock global fetch to return settings successfully
-    global.fetch = jest.fn().mockResolvedValue({
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({
+      json: vi.fn().mockResolvedValue({
         timeWindow: { start: "09:00", end: "10:00" },
         gpsLocation: { lat: 12.9716, lng: 77.5946, radius: 100 },
       }),
@@ -43,7 +43,7 @@ describe("AttendanceValidation Exception Modal Focus Trap", () => {
 
     // Mock geolocation
     navigator.geolocation = {
-      getCurrentPosition: jest.fn().mockImplementation((success) =>
+      getCurrentPosition: vi.fn().mockImplementation((success) =>
         success({
           coords: {
             latitude: 12.9716,

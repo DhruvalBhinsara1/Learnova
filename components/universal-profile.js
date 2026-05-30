@@ -26,16 +26,12 @@ import {
   Save,
   X,
   Camera,
-  Star,
   Award,
   Clock,
   Activity,
   BookOpen,
   Sparkles,
   Shield,
-  Crown,
-  Zap,
-  TrendingUp,
   User2,
   GraduationCap,
   Users,
@@ -277,48 +273,21 @@ export default function UniversalProfile() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
-   
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-
-  if (!allowedTypes.includes(file.type)) {
-    toast.error("Invalid file type. Only JPG, PNG, WEBP are allowed.");
-    e.target.value = "";
-    return;
-  }
-
-  const MAX_SIZE = 2 * 1024 * 1024;
-
-  if (file.size > MAX_SIZE) {
-    toast.error("File size exceeds 2MB. Please select a smaller file.");
-    e.target.value = "";
-    return;
-  }
-
-  const loadingToast = toast.loading("Uploading profile picture...");
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Upload failed");
-      }
-
-      toast.success("Uploaded!");
-      e.target.value = ""; 
-    } catch (error) {
-      toast.error("Upload failed!");
-    } finally {
-      toast.dismiss(loadingToast);
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Only .jpg, .jpeg, .png, and .webp are supported.");
+      e.target.value = "";
+      return;
     }
-   
+
+    const MAX_SIZE = 2 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      toast.error("File too large. Maximum image size allowed is 2MB.");
+      e.target.value = "";
+      return;
+    }
 
     // Show preview before uploading
     const objectUrl = URL.createObjectURL(file);
@@ -356,7 +325,7 @@ export default function UniversalProfile() {
 
       if (!detection) {
         toast.error("Could not detect a clear face. Please upload a clear headshot photo.", { id: detectToast });
-        handleCancelPreview();
+        handleCancelPreview(); // resets fileInputRef.current.value internally
         return;
       }
 
@@ -365,7 +334,7 @@ export default function UniversalProfile() {
     } catch (err) {
       console.error("Face detection error during profile update:", err);
       toast.error("Error analyzing image file. Please ensure it is a valid face image.", { id: detectToast });
-      handleCancelPreview();
+      handleCancelPreview(); // resets fileInputRef.current.value internally
       return;
     }
 
@@ -911,7 +880,7 @@ export default function UniversalProfile() {
               <div>
                 <h3 className="text-2xl font-bold mb-6">Detailed Activity</h3>
                 <div className="relative border-l border-white/10 ml-4 space-y-8 pb-4">
-                  {recentActivity.map((item, index) => (
+                  {recentActivity.map((item) => (
                     <div key={item.id} className="relative pl-8">
                       <div className="absolute -left-3 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-4 border-gray-900">
                         <Activity className="w-3 h-3 text-white" />

@@ -6,6 +6,10 @@ const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
 
+// Allowed clock skew when validating JWT `exp` (seconds). Keep small to limit
+// acceptance window for expired or revoked tokens.
+const CLOCK_TOLERANCE_SECONDS = 60;
+
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
@@ -76,6 +80,37 @@ function buildPageCsp() {
 
 async function verifyIdToken(token) {
   try {
+    // Quick expiry check based on the token's `exp` claim to limit clock tolerance.
+    const getJwtExp = (t) => {
+      try {
+        const parts = t.split(".");
+        if (parts.length < 2) return null;
+        let payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        while (payload.length % 4) payload += "=";
+        let jsonStr;
+        if (typeof atob === "function") {
+          jsonStr = atob(payload);
+        } else if (typeof Buffer !== "undefined") {
+          jsonStr = Buffer.from(payload, "base64").toString("utf8");
+        } else {
+          return null;
+        }
+        const parsed = JSON.parse(jsonStr);
+        return typeof parsed.exp === "number" ? parsed.exp : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const exp = getJwtExp(token);
+    if (exp) {
+      const now = Math.floor(Date.now() / 1000);
+      if (now > exp + CLOCK_TOLERANCE_SECONDS) {
+        // Token expired beyond acceptable clock skew/tolerance
+        return null;
+      }
+    }
+
     if (!FIREBASE_PROJECT_ID || !FIREBASE_API_KEY) return null;
 
     const response = await fetch(
@@ -168,8 +203,8 @@ export async function middleware(request) {
   if (!authToken) {
     authToken = request.cookies.get("authToken")?.value;
   }
-
-  // ── 4. Token verification ──
+  
+  // Cryptographically verify the token — decoding alone is not sufficient
   let isTokenValid = false;
   let isEmailVerified = false;
   let userRole = null;
@@ -179,23 +214,7 @@ export async function middleware(request) {
     if (payload) {
       isTokenValid = true;
       isEmailVerified = !!payload.email_verified;
-
-      if (payload.role) {
-        userRole = payload.role;
-      } else if (FIREBASE_PROJECT_ID) {
-        try {
-          const res = await fetch(
-            `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${payload.sub}`,
-            { headers: { Authorization: `Bearer ${authToken}` } }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            userRole = data.fields?.role?.stringValue || null;
-          }
-        } catch (err) {
-          console.error("Middleware Edge fetch failed:", err);
-        }
-      }
+      userRole = payload.role || null;
     }
   }
 
@@ -294,6 +313,6 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|workbox-.*).*)",
   ],
 };
