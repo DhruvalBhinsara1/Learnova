@@ -69,7 +69,11 @@ export default function OfflineIndicator() {
       window.removeEventListener("learnova:mutation-queued", handleLocalEvent);
       window.removeEventListener("learnova:mutations-sync-complete", handleLocalEvent);
       navigator.serviceWorker?.removeEventListener("message", handleMessage);
-      clearInterval(interval);
+      
+      // Ensure interval is cleared
+      if (interval) {
+        clearInterval(interval);
+      }
     };
   }, []);
 

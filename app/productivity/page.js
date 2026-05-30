@@ -415,7 +415,11 @@ export default function ProductivityPage() {
       });
     }, 1000);
 
-    return () => clearInterval(timerId);
+    return () => {
+      if (timerId) {
+        clearInterval(timerId);
+      }
+    };
   }, [isRunning]);
 
   /** Records a completed Pomodoro session to the API. */

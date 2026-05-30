@@ -5,6 +5,7 @@ import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
+import { connectDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -33,11 +34,14 @@ async function publishNotice(request) {
 
   const adminDb = getAdminDb();
 
+  const instituteId = profile.instituteId || null;
+
   const newNotice = {
     ...validData,
     author: decodedToken.name || decodedToken.email.split("@")[0],
     authorId: decodedToken.uid,
     authorRole: profile.role,
+    instituteId,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -45,6 +49,17 @@ async function publishNotice(request) {
   const result = await adminDb
     .collection("notices")
     .add(newNotice);
+
+  // Sync to MongoDB for SSE Change Stream support
+  try {
+    const mongoDb = await connectDb();
+    await mongoDb.collection("notices").insertOne({
+      ...newNotice,
+      _id: result.id,
+    });
+  } catch (mongoError) {
+    console.error("Failed to sync notice to MongoDB:", mongoError);
+  }
 
   return NextResponse.json({
     success: true,

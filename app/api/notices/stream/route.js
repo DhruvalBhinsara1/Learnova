@@ -66,9 +66,11 @@ let sharedStream = null;
 let sharedDb = null;
 let streamReconnectTimer = null;
 let streamReconnectRetryCount = 0;
+let streamGeneration = 0;
 
 async function startChangeStream() {
   stopChangeStream();
+  const gen = ++streamGeneration;
   try {
     sharedDb = await connectDbForSSE();
     const coll = sharedDb.collection("notices");
@@ -77,15 +79,24 @@ async function startChangeStream() {
       const doc = change.fullDocument;
       if (doc) broadcastNotice(doc);
     });
-    sharedStream.on("error", () => scheduleChangeStreamReconnect());
-    sharedStream.on("close", () => scheduleChangeStreamReconnect());
+    sharedStream.on("error", () => {
+      if (streamGeneration !== gen) return;
+      scheduleChangeStreamReconnect();
+    });
+    sharedStream.on("close", () => {
+      if (streamGeneration !== gen) return;
+      scheduleChangeStreamReconnect();
+    });
     streamReconnectRetryCount = 0;
   } catch {
-    scheduleChangeStreamReconnect();
+    if (streamGeneration === gen) {
+      scheduleChangeStreamReconnect();
+    }
   }
 }
 
 function stopChangeStream() {
+  streamGeneration++;
   if (streamReconnectTimer) {
     clearTimeout(streamReconnectTimer);
     streamReconnectTimer = null;
@@ -149,6 +160,7 @@ export async function GET(request) {
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
     const userId = decodedToken.uid;
+    const instituteId = profile?.instituteId || null;
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(`notices_stream_${ip}_${userId}`);
@@ -214,7 +226,10 @@ export async function GET(request) {
 
         try {
           const initialNotices = await noticesCollection
-            .find({ targetAudience: userRole })
+            .find({ 
+              targetAudience: userRole,
+              instituteId: instituteId 
+            })
             .sort({ isPinned: -1, createdAt: -1 })
             .limit(50)
             .toArray();
@@ -234,7 +249,8 @@ export async function GET(request) {
           if (!isConnected) return;
           if (
             doc.targetAudience &&
-            doc.targetAudience.includes(userRole)
+            doc.targetAudience.includes(userRole) &&
+            String(doc.instituteId) === String(instituteId)
           ) {
             sendEvent("new-notice", {
               ...doc,

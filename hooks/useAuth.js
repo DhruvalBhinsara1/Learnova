@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { auth, db } from "@/lib/firebaseConfig";
 import { onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
@@ -73,24 +73,24 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const tokenRefreshIntervalRef = useRef(null);
+  const unsubscribeSnapshotRef = useRef(null);
+
   useEffect(() => {
     if (!auth) {
       setLoading(false);
       return;
     }
 
-    let unsubscribeSnapshot = null;
-    let tokenRefreshInterval = null;
-
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       // Clean up previous snapshot listener and token refresh interval if active
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
-        unsubscribeSnapshot = null;
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
       }
-      if (tokenRefreshInterval) {
-        clearInterval(tokenRefreshInterval);
-        tokenRefreshInterval = null;
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current);
+        tokenRefreshIntervalRef.current = null;
       }
 
       try {
@@ -101,18 +101,19 @@ export const useAuth = () => {
           // authToken cookie never goes stale before the middleware rejects it.
           // Firebase tokens expire after 60 minutes; 55-minute interval gives a
           // 5-minute buffer for network latency and clock drift.
-          tokenRefreshInterval = setInterval(async () => {
+          tokenRefreshIntervalRef.current = setInterval(async () => {
             try {
               const freshToken = await firebaseUser.getIdToken(true);
               setAuthTokenCookie(freshToken);
-            } catch {
+            } catch (tokenError) {
               // Network error during background refresh; the next interval will retry.
+              console.debug("Token refresh failed (will retry):", tokenError?.message);
             }
           }, 55 * 60 * 1000);
 
           // Listen to the user profile document in real-time
           const userDocRef = doc(db, "users", firebaseUser.uid);
-          unsubscribeSnapshot = onSnapshot(userDocRef, async (userDoc) => {
+          unsubscribeSnapshotRef.current = onSnapshot(userDocRef, async (userDoc) => {
             try {
               if (userDoc.exists()) {
                 const profileData = userDoc.data();
@@ -165,11 +166,13 @@ export const useAuth = () => {
 
     return () => {
       unsubscribeAuth();
-      if (unsubscribeSnapshot) {
-        unsubscribeSnapshot();
+      if (unsubscribeSnapshotRef.current) {
+        unsubscribeSnapshotRef.current();
+        unsubscribeSnapshotRef.current = null;
       }
-      if (tokenRefreshInterval) {
-        clearInterval(tokenRefreshInterval);
+      if (tokenRefreshIntervalRef.current) {
+        clearInterval(tokenRefreshIntervalRef.current);
+        tokenRefreshIntervalRef.current = null;
       }
     };
   }, []);

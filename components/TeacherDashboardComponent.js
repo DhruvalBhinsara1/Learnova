@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { Navbar } from "./Navbar";
 import Image from "next/image";
@@ -126,6 +127,72 @@ const TeacherDashboard = () => {
 
   const [weeklySchedule, setWeeklySchedule] = useState({});
   const [isExporting, setIsExporting] = useState(false);
+
+  const abortControllerRef = useRef(null);
+  const pollingTimeoutRef = useRef(null);
+  const isFetchingRef = useRef(false);
+
+  const fetchExceptionRequests = async (isBackground = false) => {
+    if (!user) return;
+
+    // Prevent overlapping requests
+    if (isFetchingRef.current) {
+      return;
+    }
+    isFetchingRef.current = true;
+
+    // Cancel previous request if still pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    if (!isBackground) setIsLoadingRequests(true);
+    setRequestsError(null);
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/exceptions/list", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const payload = data.data ?? data;
+
+      // Normalize data structure
+      const normalizedRequests = (payload.exceptions || []).map((req) => ({
+        id: req._id || req.id,
+        studentName: req.studentName || req.student || "Unknown Student",
+        studentId: req.studentId || req.rollNo || "",
+        className: req.className || req.class || "",
+        reason: req.reason || "",
+        details: req.details || "",
+        status: req.status || "pending",
+        timestamp: req.createdAt || req.timestamp,
+        currentLocation: req.currentLocation,
+        comments: req.comments || "",
+        reviewedBy: req.reviewedBy || "",
+        reviewedAt: req.reviewedAt || "",
+      }));
+
+      setExceptionRequests(normalizedRequests);
+    } catch (error) {
+      // Ignore abort errors (user-triggered cancellations)
+      if (error?.name !== "AbortError") {
+        setRequestsError(error.message);
+      }
+    } finally {
+      if (!isBackground) setIsLoadingRequests(false);
+      isFetchingRef.current = false;
+    }
+  };
 
   const handleExport = (format) => {
     setIsExporting(true);
@@ -266,56 +333,32 @@ const TeacherDashboard = () => {
 
   // Fetch exception requests
   useEffect(() => {
-    const fetchExceptionRequests = async (isBackground = false) => {
-      if (!user) return;
-
-      if (!isBackground) setIsLoadingRequests(true);
-      setRequestsError(null);
-
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch("/api/exceptions/list", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const payload = data.data ?? data;
-
-        // Normalize data structure
-        const normalizedRequests = (payload.exceptions || []).map((req) => ({
-          id: req._id || req.id,
-          studentName: req.studentName || req.student || "Unknown Student",
-          studentId: req.studentId || req.rollNo || "",
-          className: req.className || req.class || "",
-          reason: req.reason || "",
-          details: req.details || "",
-          status: req.status || "pending",
-          timestamp: req.createdAt || req.timestamp,
-          currentLocation: req.currentLocation,
-          comments: req.comments || "",
-          reviewedBy: req.reviewedBy || "",
-          reviewedAt: req.reviewedAt || "",
-        }));
-
-        setExceptionRequests(normalizedRequests);
-      } catch (error) {
-        setRequestsError(error.message);
-      } finally {
-        if (!isBackground) setIsLoadingRequests(false);
-      }
-    };
-
     fetchExceptionRequests();
 
-    // Poll for updates every 30 seconds
-    const interval = setInterval(() => fetchExceptionRequests(true), 30000);
-    return () => clearInterval(interval);
+    // Use recursive timeout instead of setInterval to prevent request stacking
+    // Ensures each poll completes before the next one starts
+    const scheduleNextPoll = () => {
+      pollingTimeoutRef.current = setTimeout(() => {
+        fetchExceptionRequests(true).then(() => {
+          scheduleNextPoll();
+        }).catch(() => {
+          // Reschedule even on error
+          scheduleNextPoll();
+        });
+      }, 30000);
+    };
+    scheduleNextPoll();
+    
+    return () => {
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+        pollingTimeoutRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [user]);
 
   const handleExceptionRequest = async (id, action) => {
@@ -371,8 +414,12 @@ const TeacherDashboard = () => {
     }, 1000);
 
     return () => {
-      clearInterval(timer);
-      clearTimeout(loadingTimer);
+      if (timer) {
+        clearInterval(timer);
+      }
+      if (loadingTimer) {
+        clearTimeout(loadingTimer);
+      }
     };
   }, []);
 

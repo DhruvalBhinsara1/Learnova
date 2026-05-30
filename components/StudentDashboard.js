@@ -96,6 +96,27 @@ const parseClassStartTime = (time = "") => {
   };
 };
 
+  const [showComplaint, setShowComplaint] =
+    useState(false);
+
+    const [skillPath, setSkillPath] = useState("standard"); 
+    const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(true);
+
+    useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        if (!user?.uid) return;
+        const activities = await getUserActivities(user.uid);
+        const mapped = activities.map(a => ({
+         subject: a.title,
+          date: a.timestamp?.toLocaleDateString() || "",
+          status: a.progress >= 100 ? "present" : "late",
+          }));
+setRecentActivity(mapped);
+      } catch (err) {
+        console.error("Failed to load activity", err);
+      }
+    };
 const getUpcomingClass = (classes, now) => {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -310,6 +331,18 @@ const StudentDashboard = () => {
   }, []);
 
   if (loading) {
+    const handleEvaluateQuiz = (scoreOutOfFive) => {
+      const percentage = (scoreOutOfFive / 5) * 100;
+  
+      if (percentage >= 80) {
+        setSkillPath("advanced"); 
+      } else if (percentage <= 40) {
+        setSkillPath("booster");  
+      } else {
+        setSkillPath("standard"); 
+      }
+        setShowDiagnosticQuiz(false); 
+      };
     return <DashboardSkeleton />;
   }
 
@@ -320,6 +353,131 @@ const StudentDashboard = () => {
   return (
     <div className="min-h-screen bg-background relative overflow-x-hidden">
       <Navbar />
+      {/* --- PASTE CHANGE 3 START --- */}
+      {showDiagnosticQuiz ? (
+        <div className="max-w-7xl mx-auto mt-6 px-6 relative z-20">
+          <div className="bg-gradient-to-r from-blue-900/40 via-purple-900/40 to-black border border-blue-500/30 rounded-2xl p-6 text-white backdrop-blur-xl">
+            <div className="flex items-center space-x-2 mb-2">
+              <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />
+              <h3 className="text-lg font-bold">Dynamic Module Evaluation</h3>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Choose an option below to test how the layout alters itself seamlessly depending on student skill level.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => handleEvaluateQuiz(5)} 
+                className="bg-green-500/20 hover:bg-green-500/40 text-green-400 border border-green-500/30 px-4 py-2 rounded-xl text-xs font-semibold transition"
+              >
+                Simulate Advanced Track (Skip Basics)
+              </button>
+              <button 
+                onClick={() => handleEvaluateQuiz(2)} 
+                className="bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-400 border border-yellow-500/30 px-4 py-2 rounded-xl text-xs font-semibold transition"
+              >
+                Simulate Booster Track (Add Helpers)
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto mt-6 px-6 relative z-20">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between">
+            <span className="text-sm text-gray-400">Current Adaptive Layout Sequence:</span>
+            <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${
+              skillPath === 'advanced' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+              skillPath === 'booster' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+              'bg-blue-500/20 text-blue-400 border border-white/10'
+            }`}>
+              {skillPath} Sequence Active
+            </span>
+          </div>
+        </div>
+      )}
+      {/* --- PASTE CHANGE 3 END --- */}
+      <div className="relative z-10">
+        <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
+          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  {user?.photoURL ? (
+                    <Image
+                      src={user.photoURL}
+                      alt="Profile"
+                      width={48}
+                      height={48}
+                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
+                      <span className="text-sm font-bold text-white">
+                        {getUserInitials()}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
+                </div>
+
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
+                    {user?.displayName ||
+                      user?.email?.split("@")[0] ||
+                      "Student"}
+                  </h1>
+
+                  <div className="text-sm text-gray-400">
+                    {user?.email || "No email"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xl font-mono text-white">
+                  {currentTime?.toLocaleTimeString(
+                    [],
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  )}
+                </div>
+
+                <div className="text-xs text-gray-400">
+                  {currentTime?.toLocaleDateString(
+                    [],
+                    {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    }
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT CONTINUES */}
+      {/* --- PASTE THIS BLOCK RIGHT HERE TO DISPLAY DYNAMIC CONTENT SECTIONS --- */}
+      <div className="max-w-7xl mx-auto px-6">
+        {skillPath === "advanced" && (
+          <div className="mt-6 p-5 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+          <h4 className="text-purple-400 font-bold text-sm mb-1">🚀 Fast-Track Projects Unlocked</h4>
+          <p className="text-xs text-gray-400">The layout has automatically removed foundational reading sequences. Enjoy your high-level coding challenges!</p>
+        </div>
+      )}
+
+      {skillPath === "booster" && (
+        <div className="mt-6 p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+        <h4 className="text-yellow-400 font-bold text-sm mb-1">💡 Supplemental Booster Modules Active</h4>
+        <p className="text-xs text-gray-400">We have populated extra summary workflows and alternative video references to assist you with core terms.</p>
+      </div>
+    )}
+  </div>
+      {/* Keep all your remaining JSX exactly same below this */}
 
       <div className="relative z-10 max-w-7xl mx-auto pt-20 pb-12 px-4 sm:px-6 space-y-6">
         <DashboardHeader
