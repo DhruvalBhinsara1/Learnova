@@ -32,7 +32,6 @@ import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
 import AllProviders from "./providers/AllProviders";
 
 // ─── SEO metadata & structured data ─────────────────────────────────────────
-import { metadata } from "@/lib/seo/siteMetadata";
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import CommandPalette from "../components/CommandPalette";
 
