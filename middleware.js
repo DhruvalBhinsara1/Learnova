@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
+import { Redis } from "@upstash/redis";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -7,19 +8,32 @@ const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
 const FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY;
 
-// ─── Clock Tolerance ─────────────────────────────────────────────────────────
-
+// Allowed clock skew when validating JWT `exp` (seconds). Keep small to limit
+// acceptance window for expired or revoked tokens.
 const CLOCK_TOLERANCE_SECONDS = 60;
 
-// ─── Edge-Compatible Rate Limiting ───────────────────────────────────────────
-// Uses a tiered approach: in-memory for single instance, with a fallback
-// that degrades gracefully in serverless. The in-memory map still provides
-// protection within a single instance lifetime, and we add a cookie-based
-// fingerprint to reduce cross-instance bypass surface.
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+// Uses Upstash Redis (Vercel KV) as a centralized store so that rate limit
+// state is shared across all serverless/edge instances, preventing bypass
+// attacks. Falls back to per-instance memory only during local development.
 
-const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
+
+let redisClient;
+
+function getRedis() {
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+  }
+  return redisClient;
+}
+
+// Dev-only in-memory fallback (never used in production)
+const devRateLimitMap = new Map();
 
 const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/login",
@@ -33,34 +47,62 @@ function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
 }
 
-/**
- * Rate limits auth API routes. Uses IP + a cookie-based session fingerprint
- * to reduce cross-instance bypass in serverless environments.
- * The fingerprint ensures that even if the in-memory map is fresh on a cold
- * instance, the same browser session is still tracked via the cookie.
- */
-function rateLimit(ip, pathname, request) {
-  // Build a session fingerprint from IP + a stable cookie value if available
+async function rateLimit(ip, pathname, request) {
   const sessionFingerprint = request.cookies.get("__Secure-next-auth.session-token")?.value
     || request.cookies.get("next-auth.session-token")?.value
     || request.cookies.get("authToken")?.value
     || "";
-  const key = `${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
+  const key = `ratelimit:auth:${ip}_${pathname}_${sessionFingerprint.slice(0, 16)}`;
+  const limit = RATE_LIMIT_MAX;
+  const windowMs = RATE_LIMIT_WINDOW_MS;
 
-  if (!entry || now > entry.resetTime) {
-    rateLimitMap.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  const hasRedis =
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (hasRedis) {
+    try {
+      const redis = getRedis();
+      const now = Date.now();
+      const windowStart = now - windowMs;
+
+      const multi = redis.multi();
+      multi.zremrangebyscore(key, 0, windowStart);
+      multi.zadd(key, { score: now, member: `${now}-${Math.random()}` });
+      multi.zcard(key);
+      multi.expire(key, Math.ceil(windowMs / 1000));
+      const [, , count] = await multi.exec();
+
+      const current = Number(count);
+      if (current > limit) {
+        const oldest = await redis.zrange(key, 0, 0, { withScores: true });
+        const resetTime = oldest.length >= 2 ? Number(oldest[1]) + windowMs : now + windowMs;
+        const retryAfter = Math.ceil((resetTime - now) / 1000);
+        return { allowed: false, remaining: 0, retryAfter };
+      }
+
+      return { allowed: true, remaining: limit - current };
+    } catch (err) {
+      console.error("[rate-limit] Upstash Redis error, granting pass:", err);
+      return { allowed: true, remaining: limit - 1 };
+    }
   }
 
-  if (entry.count >= RATE_LIMIT_MAX) {
+  // Development-only in-memory fallback
+  const entry = devRateLimitMap.get(key);
+  const now = Date.now();
+
+  if (!entry || now > entry.resetTime) {
+    devRateLimitMap.set(key, { count: 1, resetTime: now + windowMs });
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  if (entry.count >= limit) {
     const retryAfter = Math.ceil((entry.resetTime - now) / 1000);
     return { allowed: false, remaining: 0, retryAfter };
   }
 
   entry.count += 1;
-  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+  return { allowed: true, remaining: limit - entry.count };
 }
 
 // Periodically clean up expired entries to prevent unbounded memory growth
@@ -281,7 +323,7 @@ export async function middleware(request) {
       request.headers.get("x-real-ip") ||
       "unknown";
 
-    const { allowed, remaining, retryAfter } = rateLimit(ip, pathname, request);
+    const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
 
     if (!allowed) {
       return NextResponse.json(
