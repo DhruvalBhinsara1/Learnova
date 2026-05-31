@@ -4,7 +4,6 @@ import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { connectDb } from "@/lib/mongodb";
 import { extractImageFileFromFormData, uploadAvatarToBlob } from "@/lib/images/imagesService";
-import { del } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 
