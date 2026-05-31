@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { auth, db } from "@/lib/firebaseConfig";
 import { onIdTokenChanged, signOut as firebaseSignOut } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, getDoc } from "firebase/firestore";
 import { getClientCsrfToken } from "@/lib/csrf";
 
 /**
@@ -78,7 +78,7 @@ export const clearAuthSensitiveCaches = async () => {
 
     await Promise.all(authCacheKeys.map((key) => cacheStorage.delete(key)));
   } catch (cacheErr) {
-    console.warn("Failed to clear auth-sensitive caches:", cacheErr);
+    // Failed to clear caches; silently ignore to avoid leaking sensitive info to console
   }
 };
 
@@ -104,10 +104,6 @@ function createTokenRefreshManager(firebaseUser, onSessionExpired) {
       consecutiveFailures = 0;
     } catch (tokenError) {
       consecutiveFailures++;
-      console.warn(
-        `[useAuth] Token refresh failed (attempt ${consecutiveFailures}/${MAX_REFRESH_RETRIES}):`,
-        tokenError?.message
-      );
 
       if (consecutiveFailures >= MAX_REFRESH_RETRIES) {
         console.error("[useAuth] Token refresh failed after max retries. Session may be expired.");
@@ -194,7 +190,7 @@ export const useAuth = () => {
           refreshManagerRef.current = createTokenRefreshManager(firebaseUser, handleSessionExpired);
           refreshManagerRef.current.start();
 
-          // Listen to the user profile document in real-time
+          // Listen to the user profile document in real-time for profile data
           const userDocRef = doc(db, "users", firebaseUser.uid);
           unsubscribeSnapshotRef.current = onSnapshot(userDocRef, async (userDoc) => {
             try {
@@ -202,12 +198,18 @@ export const useAuth = () => {
                 const profileData = userDoc.data();
                 setUserProfile(profileData);
 
-                // Sync auth token and role in cookies
+                // Sync auth token cookie
                 const token = await firebaseUser.getIdToken();
                 await syncAuthTokenCookie(token);
-                setCookie("userRole", profileData.role, 7);
+
+                // Read role from JWT custom claims (authoritative source)
+                // instead of Firestore to prevent role mismatch during async claim propagation
+                const idTokenResult = await firebaseUser.getIdTokenResult();
+                const claimsRole = idTokenResult.claims?.role;
+                if (claimsRole) {
+                  setCookie("userRole", claimsRole, 7);
+                }
               } else {
-                // User exists in Auth but no profile in Firestore yet
                 setUserProfile(null);
                 deleteCookie("authToken");
                 deleteCookie("userRole");
@@ -219,8 +221,6 @@ export const useAuth = () => {
               setLoading(false);
             }
           }, (snapError) => {
-            console.warn("Profile snapshot subscription error:", snapError.message);
-            // Handle permission denied or other errors gracefully without locking loading state
             setLoading(false);
           });
         } else {

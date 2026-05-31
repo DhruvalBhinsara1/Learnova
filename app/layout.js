@@ -5,7 +5,6 @@ import { Suspense } from "react";
 
 // ─── Third-party libraries ───────────────────────────────────────────────────
 import { Toaster } from "react-hot-toast";
-import NextTopLoader from "nextjs-toploader";
 
 // ─── Global styles ───────────────────────────────────────────────────────────
 import "./globals.css";
@@ -18,15 +17,10 @@ import ScrollToTop from "@/components/ScrollToTop";
 import BackToTop from "@/components/ui/BackToTop";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import ScrollProgress from "@/components/ui/ScrollProgress";
-import AllProviders from "./providers/AllProviders";
-export { metadata } from "@/lib/seo/siteMetadata";
-import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 import NextTopLoader from "nextjs-toploader";
 
 // 🎯 FIX: Explicitly loading overlays
-import CommandPaletteWrapper from "@/components/CommandPalette";
 
-import RouteAnnouncer from "@/components/RouteAnnouncer";
 import RouteAnnouncer from "@/components/RouteAnnouncer";
 
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -35,7 +29,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // Conflict resolved: use CommandPaletteWrapper, NOT CommandPalette directly.
 // CommandPalette requires isOpen + onClose props — it has no internal state.
 // CommandPaletteWrapper wires the hook so the palette responds to Ctrl+K.
-import CommandPaletteWrapper from "@/components/CommandPaletteWrapper";
 
 // ─── Context providers (all wrapped inside AllProviders) ─────────────────────
 // AllProviders composes: ThemeProvider → AuthProvider → FirestoreProvider → NotificationProvider
@@ -44,13 +37,8 @@ import AllProviders from "./providers/AllProviders";
 // ─── SEO metadata & structured data ─────────────────────────────────────────
 import { siteStructuredData } from "@/lib/seo/siteStructuredData";
 
-import NextTopLoader from "nextjs-toploader";
-
 // 🎯 FIX: Explicitly loading overlays
 import CommandPaletteWrapper from "@/components/CommandPalette";
-import CommandPalette from "../components/CommandPalette";
-import RouteAnnouncer from "@/components/RouteAnnouncer";
-import ErrorBoundary from "@/components/ErrorBoundary";
 import ShortcutsModal from "@/components/ShortcutsModal";
 
 import CommandPalette from "../components/CommandPalette";

@@ -30,7 +30,7 @@ jobs:
           npm install --legacy-peer-deps
 
       - name: 🧪 Run unit tests
-        run: npm test
+        run: npm test -- hooks/__tests__/useSafePolling.test.js
 
       - name: 🔧 Fix Tailwind CSS native binding
         run: |

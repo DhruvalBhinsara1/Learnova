@@ -11,16 +11,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export const POST = async (request) => {
   try {
-    console.log("Avatar upload endpoint called");
-    
     const decodedToken = await requireAuth(request);
-    console.log("User authenticated:", decodedToken.uid);
-    
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    
+
+    const ip =
+      request.headers.get("x-forwarded-for") || "127.0.0.1";
+
     const rateLimitResult = await checkRateLimit(
       `avatar_upload_${ip}_${decodedToken.uid}`
     );
+
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "Too many attempts. Please try again later." },
@@ -28,7 +27,6 @@ export const POST = async (request) => {
       );
     }
 
-    console.log("Extracting form data...");
     const formData = await request.formData();
     const file = extractImageFileFromFormData(formData);
 
@@ -39,7 +37,7 @@ export const POST = async (request) => {
       );
     }
 
-    console.log("File received:", file.name, file.size, file.type);
+    // File metadata received; do not log PII or file details in production
 
     if (file.size <= 0) {
       return NextResponse.json(
@@ -56,7 +54,6 @@ export const POST = async (request) => {
     }
 
     // Upload to Vercel Blob instead of storing base64 in MongoDB
-    console.log("Uploading to blob storage...");
     const { blobUrl } = await uploadAvatarToBlob({
       file,
       uid: decodedToken.uid,
@@ -79,7 +76,11 @@ export const POST = async (request) => {
 
       // Delete old blob after successful DB write
       const oldAvatar = existingUser?.avatar;
-      if (oldAvatar && oldAvatar.startsWith("https://")) {
+
+      if (
+        oldAvatar &&
+        oldAvatar.startsWith("https://")
+      ) {
         await del(oldAvatar).catch(() => {});
       }
     } catch (error) {
@@ -88,13 +89,13 @@ export const POST = async (request) => {
       throw error;
     }
 
-    console.log("Avatar saved successfully to blob storage");
-    
+    // Avatar saved successfully to blob storage
+
     return NextResponse.json(
-      { 
-        success: true, 
+      {
+        success: true,
         url: blobUrl,
-        message: "Avatar uploaded successfully" 
+        message: "Avatar uploaded successfully",
       },
       { status: 200 }
     );
@@ -104,16 +105,22 @@ export const POST = async (request) => {
       stack: error?.stack,
       name: error?.name,
     });
-    
+
     // Return specific error messages
-    if (error.message && error.message.includes("Unauthorized")) {
+    if (
+      error.message &&
+      error.message.includes("Unauthorized")
+    ) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
-    
-    if (error.statusCode && error.statusCode < 500) {
+
+    if (
+      error.statusCode &&
+      error.statusCode < 500
+    ) {
       return NextResponse.json(
         { error: error.message },
         { status: error.statusCode }
@@ -121,7 +128,11 @@ export const POST = async (request) => {
     }
 
     return NextResponse.json(
-      { error: error.message || "Failed to upload avatar" },
+      {
+        error:
+          error.message ||
+          "Failed to upload avatar",
+      },
       { status: 500 }
     );
   }

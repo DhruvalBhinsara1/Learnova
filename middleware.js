@@ -93,8 +93,8 @@ async function rateLimit(ip, pathname, request) {
 
       return { allowed: true, remaining: limit - current };
     } catch (err) {
-      console.error("[rate-limit] Upstash Redis error, granting pass:", err);
-      return { allowed: true, remaining: limit - 1 };
+      console.error("[rate-limit] Upstash Redis error — denying request:", err);
+      return { allowed: false, remaining: 0, retryAfter: Math.ceil(windowMs / 1000) };
     }
   }
 
@@ -148,9 +148,9 @@ function buildPageCsp() {
     frameSrc.push(`https://${FIREBASE_AUTH_DOMAIN}`);
   }
 
-  return [
+  const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.public.blob.vercel-storage.com https://github.com https://www.google-analytics.com",
@@ -162,7 +162,14 @@ function buildPageCsp() {
     "base-uri 'self'",
     "form-action 'self'",
     "upgrade-insecure-requests",
-  ].join("; ");
+  ];
+
+  if (process.env.CSP_REPORT_URL) {
+    cspDirectives.push(`report-uri ${process.env.CSP_REPORT_URL}`);
+    cspDirectives.push(`report-to ${process.env.CSP_REPORT_URL}`);
+  }
+
+  return cspDirectives.join("; ");
 }
 
 // ─── Firebase Token Verification via jose ────────────────────────────────────
@@ -495,11 +502,16 @@ export async function middleware(request) {
     }
   }
 
-  // ── 9. Attach CSP header for pages ──
+  // ── 9. Attach CSP and standard Security headers ──
   const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (isPage) {
     response.headers.set("Content-Security-Policy", buildPageCsp());
+    response.headers.set("X-Frame-Options", "SAMEORIGIN");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    response.headers.set("X-XSS-Protection", "1; mode=block");
   }
 
   return response;

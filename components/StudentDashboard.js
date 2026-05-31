@@ -26,8 +26,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useCurriculum } from "@/hooks/useCurriculum";
 
-import AchievementSection from "./AchievementSection";
-import AttendanceChart from "./AttendanceChart";
+const AchievementSection = dynamic(
+  () => import("./AchievementSection"),
+  {
+    ssr: false,
+    loading: () => <DashboardSkeleton />,
+  }
+);
+
+const AttendanceChart = dynamic(
+  () => import("./AttendanceChart"),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton />,
+  }
+);
 
 import { weeklySchedule } from "@/constants/mockData";
 
@@ -96,7 +109,7 @@ const parseClassStartTime = (time = "") => {
   };
 };
 
-  
+
 const getUpcomingClass = (classes, now) => {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -208,6 +221,8 @@ const DashboardHeader = ({ user, currentTime, getInitials }) => (
 
 const StudentDashboard = () => {
   const { user } = useAuth();
+  const [skillPath, setSkillPath] = useState("standard");
+  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(true);
 
   const { recentActivity, gamificationData } = useAttendance({ role: "student", user });
   const { curriculum } = useCurriculum({ role: "student", user });

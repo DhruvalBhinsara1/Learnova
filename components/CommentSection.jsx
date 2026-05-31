@@ -36,8 +36,6 @@ const CommentSection = ({ noticeId }) => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const storageKey = getCommentStorageKey(noticeId);
-
-
   useEffect(() => {
     const savedComments = safeLocalStorageGet(storageKey, null);
 

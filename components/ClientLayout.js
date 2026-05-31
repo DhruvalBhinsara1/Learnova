@@ -181,7 +181,7 @@ export default function ClientLayout({ children }) {
 
         let clientStreak = parseInt(localStorage.getItem("learnova_site_streak") || "0", 10);
         // 1. Get client-side localStorage values
-        let clientStreak = normalizeStreakCount(
+        clientStreak = normalizeStreakCount(
           localStorage.getItem("learnova_site_streak"),
         );
         let clientLastVisit = localStorage.getItem("learnova_site_last_visit") || "";
@@ -196,7 +196,7 @@ export default function ClientLayout({ children }) {
 
         const firestoreStreak = userProfile?.siteStreak || 0;
         // 2. Fetch Firestore profile variables
-        const firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
+        firestoreStreak = normalizeStreakCount(userProfile?.siteStreak);
         const firestoreLastVisit = userProfile?.siteLastVisit || "";
         const firestoreHistory = userProfile?.siteVisitHistory || [];
 
@@ -280,7 +280,6 @@ export default function ClientLayout({ children }) {
   },
   { merge: true }
 );
-console.log("[streak-sync] Firestore updated successfully.");
         }
 
       } catch (error) {

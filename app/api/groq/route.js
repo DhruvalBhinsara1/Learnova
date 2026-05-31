@@ -70,7 +70,7 @@ export const POST = withErrorHandler(async (request) => {
 
   try {
     logger.info(`[nova-ai] Making request to Groq API: ${GROQ_API_URL}`);
-    const content = await callGroq(sanitizedMessage);
+    const content = await callGroq(sanitizedMessage, [], decodedToken.uid);
     return jsonSuccess({ message: content });
   } catch (error) {
     logger.error(`[nova-ai] Groq API error: ${error.message}`);

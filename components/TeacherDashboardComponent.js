@@ -10,6 +10,7 @@ import { Navbar } from "./Navbar";
 import Image from "next/image";
 import CurriculumBuilder from "./dashboard/CurriculumBuilder";
 import { useAuth } from "@/hooks/useAuth";
+import { useSafePolling } from "@/hooks/useSafePolling";
 import {
   Calendar,
   Clock,
@@ -132,71 +133,7 @@ const TeacherDashboard = () => {
   const [weeklySchedule, setWeeklySchedule] = useState({});
   const [isExporting, setIsExporting] = useState(false);
 
-  const abortControllerRef = useRef(null);
-  const pollingTimeoutRef = useRef(null);
-  const isFetchingRef = useRef(false);
-
-  const fetchExceptionRequests = async (isBackground = false) => {
-    if (!user) return;
-
-    // Prevent overlapping requests
-    if (isFetchingRef.current) {
-      return;
-    }
-    isFetchingRef.current = true;
-
-    // Cancel previous request if still pending
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
-    if (!isBackground) setIsLoadingRequests(true);
-    setRequestsError(null);
-
-    try {
-      const token = await user.getIdToken();
-      const response = await apiFetch("/api/exceptions/list", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const payload = data.data ?? data;
-
-      // Normalize data structure
-      const normalizedRequests = (payload.exceptions || []).map((req) => ({
-        id: req._id || req.id,
-        studentName: req.studentName || req.student || "Unknown Student",
-        studentId: req.studentId || req.rollNo || "",
-        className: req.className || req.class || "",
-        reason: req.reason || "",
-        details: req.details || "",
-        status: req.status || "pending",
-        timestamp: req.createdAt || req.timestamp,
-        currentLocation: req.currentLocation,
-        comments: req.comments || "",
-        reviewedBy: req.reviewedBy || "",
-        reviewedAt: req.reviewedAt || "",
-      }));
-
-      setExceptionRequests(normalizedRequests);
-    } catch (error) {
-      // Ignore abort errors (user-triggered cancellations)
-      if (error?.name !== "AbortError") {
-        setRequestsError(error.message);
-      }
-    } finally {
-      if (!isBackground) setIsLoadingRequests(false);
-      isFetchingRef.current = false;
-    }
-  };
+  const isInitialFetchRef = useRef(true);
 
   const handleExport = (format) => {
     setIsExporting(true);
@@ -335,35 +272,64 @@ const TeacherDashboard = () => {
     }
   };
 
-  // Fetch exception requests
-  useEffect(() => {
-    fetchExceptionRequests();
+  // Fetch exception requests using safe polling hook
+  useSafePolling(
+    async (signal) => {
+      if (!user) return;
 
-    // Use recursive timeout instead of setInterval to prevent request stacking
-    // Ensures each poll completes before the next one starts
-    const scheduleNextPoll = () => {
-      pollingTimeoutRef.current = setTimeout(() => {
-        fetchExceptionRequests(true).then(() => {
-          scheduleNextPoll();
-        }).catch(() => {
-          // Reschedule even on error
-          scheduleNextPoll();
+      if (isInitialFetchRef.current) {
+        setIsLoadingRequests(true);
+      }
+      setRequestsError(null);
+
+      try {
+        const token = await user.getIdToken();
+        const response = await apiFetch("/api/exceptions/list", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal,
         });
-      }, 30000);
-    };
-    scheduleNextPoll();
-    
-    return () => {
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-        pollingTimeoutRef.current = null;
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const payload = data.data ?? data;
+
+        // Normalize data structure
+        const normalizedRequests = (payload.exceptions || []).map((req) => ({
+          id: req._id || req.id,
+          studentName: req.studentName || req.student || "Unknown Student",
+          studentId: req.studentId || req.rollNo || "",
+          className: req.className || req.class || "",
+          reason: req.reason || "",
+          details: req.details || "",
+          status: req.status || "pending",
+          timestamp: req.createdAt || req.timestamp,
+          currentLocation: req.currentLocation,
+          comments: req.comments || "",
+          reviewedBy: req.reviewedBy || "",
+          reviewedAt: req.reviewedAt || "",
+        }));
+
+        setExceptionRequests(normalizedRequests);
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          setRequestsError(error.message);
+        }
+        throw error;
+      } finally {
+        if (isInitialFetchRef.current) {
+          setIsLoadingRequests(false);
+          isInitialFetchRef.current = false;
+        }
       }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, [user]);
+    },
+    30000,
+    [user]
+  );
 
   const handleExceptionRequest = async (id, action) => {
     try {

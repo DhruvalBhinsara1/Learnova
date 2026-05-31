@@ -417,6 +417,7 @@ export default function CourseDetailPage() {
             )}
           </div>
 
+
           {/* Study / Flashcards */}
           <section className="mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-zinc-100 mb-6">Study</h2>
