@@ -10,21 +10,6 @@ import {
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/storage";
 
 // REMOVE db AND useAuth IMPORTS FOR NOW TO PREVENT CRASHES
-const defaultComments = [
-  {
-    id: "seed_1",
-    userName: "Ananya Rao",
-    userRole: "Teacher",
-    text: "Please make sure to review this notice before Monday's class.",
-  },
-  {
-    id: "seed_2",
-    userName: "Rahul Sharma",
-    userRole: "Student",
-    text: "Got it! Thanks for the update.",
-  },
-];
-
 const CommentSection = ({ noticeId }) => {
   // 1. FAKE USER BYPASS: This pretends you are logged in as a Teacher or Student
   const mockUser = {
