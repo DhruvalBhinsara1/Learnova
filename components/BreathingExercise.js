@@ -20,8 +20,12 @@ export default function BreathingExercise() {
     const timer = window.setInterval(() => {
       setSecondsLeft((current) => {
         if (current <= 1) {
-          setActivePhase((prev) => (prev + 1) % phases.length);
-          return phases[(activePhase + 1) % phases.length].duration;
+          setActivePhase((prev) => {
+            const next = (prev + 1) % phases.length;
+            setSecondsLeft(phases[next].duration);
+            return next;
+          });
+          return current;
         }
         return current - 1;
       });
