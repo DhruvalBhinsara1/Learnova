@@ -1,6 +1,12 @@
 import { GET } from "./route";
 import { connectDb } from "@/lib/mongodb";
 
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+
 vi.mock("@/lib/mongodb", () => ({
   connectDb: vi.fn(),
 }));
@@ -34,7 +40,7 @@ describe("attendance risk cron authorization", () => {
     await expect(response.json()).resolves.toMatchObject({
       success: false,
       error: {
-        message: "Cron secret is not configured",
+        message: "Internal server error",
       },
     });
   });
