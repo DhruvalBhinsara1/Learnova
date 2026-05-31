@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
 import { useAuth } from "@/hooks/useAuth";
 import {
+import { apiFetch } from "@/lib/apiClient";
+
   AlertCircle,
   MapPin,
   RefreshCw,
@@ -152,7 +154,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/settings", {
+      const response = await apiFetch("/api/attendance/settings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -381,7 +383,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     setPasscodeError("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/validate-passcode", {
+      const response = await apiFetch("/api/attendance/validate-passcode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -493,7 +495,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
       };
 
-      const response = await fetch("/api/exceptions/create", {
+      const response = await apiFetch("/api/exceptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

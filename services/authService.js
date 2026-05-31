@@ -8,7 +8,7 @@ import {
   sendEmailVerification,
   signOut,
 } from "firebase/auth";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDocl,setDoc } from "firebase/firestore";
 import {
   createUserProfile,
   getErrorMessage,
@@ -86,7 +86,7 @@ export const loginWithEmail = async (email, password, selectedRole) => {
 
       // Update last login — use updateDoc to avoid overwriting the
       // entire document (including role) with potentially stale data
-      await updateDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, "users", user.uid), {
         lastLogin: new Date(),
       });
 
@@ -275,7 +275,7 @@ export const loginWithGoogle = async (selectedRole, isLogin, additionalData) => 
 
     // Update last login for existing users
     if (userData) {
-      await updateDoc(doc(db, "users", user.uid), {
+      await setDoc(doc(db, "users", user.uid), {
         lastLogin: new Date(),
       });
 

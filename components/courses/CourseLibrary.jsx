@@ -6,6 +6,8 @@ import { Clock, Star, ArrowRight, BookOpen, Search, RotateCcw, Loader2 } from "l
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import Badge from "@/components/ui/Badge";
+import { apiFetch } from "@/lib/apiClient";
+
 
 const getDifficultyVariant = (difficulty) => {
   const diff = difficulty?.toLowerCase();
@@ -45,7 +47,7 @@ export default function CourseLibrary({
 
     try {
       const nextPage = page + 1;
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/courses?q=${encodeURIComponent(q)}&category=${encodeURIComponent(
           category
         )}&page=${nextPage}&limit=${limit}`

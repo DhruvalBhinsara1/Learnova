@@ -19,7 +19,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       - name: Verify Linter and Formatters
         run: npm run lint --if-present

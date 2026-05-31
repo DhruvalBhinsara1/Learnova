@@ -180,7 +180,11 @@ export const PATCH = withErrorHandler(async (request) => {
     
     if (Object.keys(firestoreProfileUpdate).length > 0) {
       try {
-        await admin.firestore().collection("users").doc(targetUserId).update(firestoreProfileUpdate);
+        await admin
+  .firestore()
+  .collection("users")
+  .doc(targetUserId)
+  .set(firestoreProfileUpdate, { merge: true });
 
         logger.info(`[Firestore Sync] Profile synced for user: ${targetUserId}`);
       } catch (syncError) {

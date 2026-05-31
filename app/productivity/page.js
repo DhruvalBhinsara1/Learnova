@@ -698,20 +698,38 @@ export default function ProductivityPage() {
   }, [agendaForSelectedDate, isSelectedToday]);
 
   return (
-    <AmbientAudioProvider>
-      <div
-        className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${
-          isDark ? "text-white" : "text-slate-900"
-        } relative overflow-hidden transition-all duration-500`}
-      >
-        <Navbar />
+    <div
+      className={`min-h-screen bg-gradient-to-br ${ambientGradient} ${isDark ? "text-white" : "text-slate-900"
+      } relative overflow-x-hidden transition-all duration-500`}
+    >
+      <Navbar />
+      
+      {loading ? (
+        <TimerSkeleton />
+      ) : (
+        <>
+      <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
+        {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
+      </div>
 
-        {loading ? (
-          <TimerSkeleton />
-        ) : (
-          <>
-            <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-              {isDark && <DarkVeil hueShift={ambientStyles.veilHue} />}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className={`absolute -top-32 -right-32 w-72 h-72 rounded-full ${ambientStyles.glowPrimary} blur-3xl transition-colors duration-500`} />
+        <div className={`absolute bottom-0 left-0 w-72 h-72 rounded-full ${ambientStyles.glowSecondary} blur-3xl transition-colors duration-500`} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_55%)]" />
+      </div>
+
+      <div className="pt-28 pb-20 px-4 sm:px-6 lg:px-8 relative z-10 ">
+        <div className="max-w-6xl mx-auto space-y-12">
+          <section className="text-center space-y-4">
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${isDark
+                ? "bg-white/10 border border-white/10 text-white"
+                : "bg-slate-100 border border-slate-300 text-slate-900"
+              }`}>
+              <Sparkles className="w-4 h-4 text-cyan-300" />
+              <span className={`text-sm uppercase tracking-[0.3em] ${isDark ? "text-cyan-200" : "text-cyan-700"
+                }`}>
+                Productivity Suite
+              </span>
             </div>
 
             <div className="absolute inset-0 pointer-events-none z-0">
@@ -962,6 +980,11 @@ export default function ProductivityPage() {
                     </div>
                   </motion.div>
                 </div>
+              </motion.div>
+              <div className="w-full overflow-hidden">
+                <ProductivityTrendsSection isDark={isDark} />
+              </div>
+            </div>
 
                 {/* ── Bottom Grid: Academic Eligibility + Focus Snapshot + Daily Summary ── */}
                 <div className="mt-8 grid lg:grid-cols-3 gap-8">

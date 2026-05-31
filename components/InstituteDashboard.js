@@ -733,28 +733,28 @@ const InstituteDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
           title="Present Today"
-          value="1,112"
-          subtitle="89.2% of total"
+          value={dashboardData.todayAttendance?.toLocaleString() ?? "N/A"}
+          subtitle={`${dashboardData.todayAttendance ? ((dashboardData.todayAttendance/dashboardData.totalStudents)*100).toFixed(1) : 0}% of total`}
           icon={CheckCircle}
           color="green"
         />
         <StatCard
           title="Absent Today"
-          value="135"
-          subtitle="10.8% of total"
+          value={dashboardData.totalStudents - dashboardData.todayAttendance || 0}
+          subtitle={`${dashboardData.totalStudents ? (((dashboardData.totalStudents - dashboardData.todayAttendance)/dashboardData.totalStudents)*100).toFixed(1) : 0}% of total`}
           icon={XCircle}
           color="red"
         />
         <StatCard
           title="Late Arrivals"
-          value="23"
-          subtitle="1.8% of total"
+          value={dashboardData.lateArrivals ?? "N/A"}
+          subtitle={dashboardData.lateArrivals ? `${((dashboardData.lateArrivals/dashboardData.totalStudents)*100).toFixed(1)}% of total` : "Data unavailable"}
           icon={Clock}
           color="yellow"
         />
         <StatCard
           title="Pending Requests"
-          value="8"
+          value={dashboardData.pendingRequests ?? 0}
           subtitle="Awaiting approval"
           icon={AlertTriangle}
           color="purple"

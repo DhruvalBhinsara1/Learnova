@@ -19,7 +19,7 @@ export function AgendaListSection({
       className={`${isDark
           ? "bg-black/40 border border-white/10 backdrop-blur-xl"
           : "bg-white/80 border border-slate-200 shadow-xl backdrop-blur-xl"
-        } rounded-3xl p-6 `}
+        } rounded-3xl p-6 min-h-[472px]`}
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}

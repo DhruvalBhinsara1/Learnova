@@ -6,7 +6,6 @@ import { assertApiSuccess } from "../../../testUtils/assertApiSuccess";
 import { assertApiError } from "../../../testUtils/assertApiError";
 
 vi.mock("../../../lib/error-handler", () => {
-  const { AppError } = require("../../../lib/errors");
   return {
     authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
@@ -14,10 +13,10 @@ vi.mock("../../../lib/error-handler", () => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
+          if (error && (error.statusCode !== undefined || error.name === "AppError")) {
             const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
             return {
-              status: error.statusCode,
+              status: error.statusCode || 500,
               json: async () => ({ error: payload }),
             };
           }
@@ -36,16 +35,17 @@ vi.mock("../../../lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
 }));
 
+const mockCursor = {
+  sort: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  toArray: vi.fn().mockResolvedValue([]),
+};
+const mockCollection = {
+  find: vi.fn(() => mockCursor),
+  updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
+};
+
 vi.mock("../../../lib/mongodb", () => {
-  const mockCursor = {
-    sort: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    toArray: vi.fn().mockResolvedValue([]),
-  };
-  const mockCollection = {
-    find: vi.fn(() => mockCursor),
-    updateMany: vi.fn().mockResolvedValue({ modifiedCount: 1 }),
-  };
   const mockDb = {
     collection: vi.fn(() => mockCollection),
   };
@@ -55,8 +55,6 @@ vi.mock("../../../lib/mongodb", () => {
   return {
     __esModule: true,
     default: Promise.resolve(mockClient),
-    _mockCollection: mockCollection,
-    _mockCursor: mockCursor,
   };
 });
 
@@ -70,14 +68,9 @@ vi.mock("next/server", () => ({
 }));
 
 describe("notifications route", () => {
-  let mockCollection;
-  let mockCursor;
-
   beforeEach(() => {
     vi.clearAllMocks();
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
-    mockCollection = require("../../../lib/mongodb")._mockCollection;
-    mockCursor = require("../../../lib/mongodb")._mockCursor;
   });
 
   const createMockRequest = (url = "http://localhost/api/notifications", headers = {}) => {
@@ -184,7 +177,7 @@ describe("notifications route", () => {
     });
 
     test("rejects request with 401 if unauthorized", async () => {
-      const { UnauthorizedError } = require("@/lib/errors");
+      const { UnauthorizedError } = require("../../../lib/errors");
       authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
 
       const response = await PATCH(createMockRequest());

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { authorizeCronRequest } from '@/lib/cronAuth';
 import { connectDb } from '@/lib/mongodb';
 import { evaluateStudentAttendance } from '@/lib/attendanceUtils';
 
@@ -7,9 +8,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
   try {
     // Basic authorization for cron endpoint
-    const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const cronAuth = authorizeCronRequest(request);
+    if (!cronAuth.authorized) {
+      return cronAuth.response;
     }
 
     const db = await connectDb();

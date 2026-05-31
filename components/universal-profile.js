@@ -44,6 +44,8 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "./Navbar";
+import { apiFetch } from "@/lib/apiClient";
+
 
 export default function UniversalProfile() {
   const { user, userProfile, loading } = useAuth();
@@ -349,7 +351,7 @@ export default function UniversalProfile() {
         uploadFormData.append("faceDescriptor", faceDescriptorString);
       }
 
-      const res = await fetch("/api/images", {
+      const res = await apiFetch("/api/images", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: uploadFormData,
