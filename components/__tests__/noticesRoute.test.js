@@ -289,7 +289,6 @@ describe("Notice Board Isolation & Security Tests", () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
         decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
-        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true },
       });
       getUserProfile.mockResolvedValue({
         role: "teacher",
