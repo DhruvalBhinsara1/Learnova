@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { connectDb } from "@/lib/mongodb";
-import { extractImageFileFromFormData, uploadAvatarToBlob } from "@/lib/images/imagesService";
+import { extractImageFileFromFormData, uploadAvatarToBlob, updateUserImageInDb } from "@/lib/images/imagesService";
 
 export const dynamic = "force-dynamic";
 
@@ -60,29 +60,11 @@ export const POST = async (request) => {
     });
 
     try {
-      const db = await connectDb();
-      const usersCollection = db.collection("users");
-
-      // Fetch existing avatar URL to clean up old blob if present
-      const existingUser = await usersCollection.findOne(
-        { firebaseUid: decodedToken.uid },
-        { projection: { avatar: 1 } }
-      );
-
-      await usersCollection.updateOne(
-        { firebaseUid: decodedToken.uid },
-        { $set: { avatar: blobUrl } }
-      );
-
-      // Delete old blob after successful DB write
-      const oldAvatar = existingUser?.avatar;
-
-      if (
-        oldAvatar &&
-        oldAvatar.startsWith("https://")
-      ) {
-        await del(oldAvatar).catch(() => {});
-      }
+      await updateUserImageInDb({
+        firebaseUid: decodedToken.uid,
+        imageUrl: blobUrl,
+        faceDescriptor: null,
+      });
     } catch (error) {
       // Roll back blob upload on DB failure
       await del(blobUrl).catch(() => {});

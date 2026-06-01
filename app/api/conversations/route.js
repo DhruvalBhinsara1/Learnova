@@ -9,7 +9,7 @@ import { requireAuth } from "@/lib/rbac";
 import { AppError } from "@/lib/errors";
 
 // Initialize the official Groq SDK client instance
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_groq_api_key" });
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

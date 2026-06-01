@@ -55,6 +55,7 @@ export const POST = withErrorHandler(async (request) => {
   const resolvedName = userProfile?.fullName || decodedToken.name || decodedToken.displayName || decodedToken.email?.split("@")[0] || "Unknown User";
   const resolvedEmail = userProfile?.email || decodedToken.email || "unknown@learnova.edu";
 
+  let alreadyRecorded = false;
   const sagaResult = await executeSaga({
     operationType: "attendance_record",
     uid: decodedToken.uid,

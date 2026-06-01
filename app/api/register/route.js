@@ -335,6 +335,9 @@ export const POST =
 
       const sagaKey = idempotencyKey || `register_${decodedToken.uid}_${Date.now()}`;
 
+      let uploadedBlobUrl = null;
+      let insertedUser = null;
+
       const sagaResult = await executeSaga({
         operationType: "register",
         uid: decodedToken.uid,

@@ -366,7 +366,7 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   label={item.label}
-                  isActive={pathname === item.href}
+                  isActive={isRouteActive(item.href)}
                 />
               ))}
             </div>

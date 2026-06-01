@@ -129,7 +129,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("automatically appends publisher instituteId to notice and syncs to MongoDB", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane" },
+        decodedToken: { uid: "publisher-123", email: "teacher@domain.com", name: "Teacher Jane", email_verified: true, role: "teacher" },
       });
       getUserProfile.mockResolvedValue({
         role: "teacher",
@@ -177,7 +177,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("rejects standard students from creating notices", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: { uid: "student-123", email: "student@domain.com" },
+        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true, role: "student" },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -197,7 +197,7 @@ describe("Notice Board Isolation & Security Tests", () => {
       const body = await response.json();
 
       expect(response.status).toBe(403);
-      expect(body.error.message).toContain("Forbidden");
+      expect(body.error).toContain("Requires one of");
       expect(mockFirestoreAdd).not.toHaveBeenCalled();
     });
   });
@@ -206,10 +206,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("filters initial MongoDB query by user instituteId", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: {
-          uid: "student-123",
-          email: "student@domain.com",
-        },
+        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
@@ -253,10 +250,7 @@ describe("Notice Board Isolation & Security Tests", () => {
     test("filters real-time broadcasts (onNotice) to enforce institute boundaries", async () => {
       verifyFirebaseToken.mockResolvedValue({
         valid: true,
-        decodedToken: {
-          uid: "student-123",
-          email: "student@domain.com",
-        },
+        decodedToken: { uid: "student-123", email: "student@domain.com", email_verified: true },
       });
       getUserProfile.mockResolvedValue({
         role: "student",
