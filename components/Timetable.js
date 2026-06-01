@@ -325,13 +325,12 @@ export default function Timetable({ role = "student" }) {
       toast.success("New class added!");
     }
 
-    // Chronologically sort day's classes
-    Object.keys(updatedData).forEach((d) => {
-      updatedData[d] = (updatedData[d] || []).sort((a, b) => {
-        const aStart = a.time.split("-")[0] || "00:00";
-        const bStart = b.time.split("-")[0] || "00:00";
-        return getMinutesOfTime(aStart) - getMinutesOfTime(bStart);
-      });
+    // Chronologically sort target day's classes
+    const targetDay = formData.day;
+    updatedData[targetDay] = (updatedData[targetDay] || []).sort((a, b) => {
+      const aStart = a.time.split("-")[0] || "00:00";
+      const bStart = b.time.split("-")[0] || "00:00";
+      return getMinutesOfTime(aStart) - getMinutesOfTime(bStart);
     });
 
     saveTimetable(updatedData);
