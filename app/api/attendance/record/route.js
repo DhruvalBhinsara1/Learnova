@@ -144,8 +144,12 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   if (!sagaResult.success) {
-    // Attendance was written but XP award failed — log for reconciliation
-    console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    if (sagaResult.failedStep === "award_xp") {
+      console.error(`[attendance] XP award failed for user ${userId}: ${sagaResult.error}`);
+    } else {
+      console.error(`[attendance] Saga failed at step "${sagaResult.failedStep}" for user ${userId}: ${sagaResult.error}`);
+      return jsonError("Attendance recording failed", 502);
+    }
   }
 
   return jsonSuccess({ alreadyRecorded: false }, 201);
