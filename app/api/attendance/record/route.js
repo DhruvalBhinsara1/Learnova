@@ -8,6 +8,8 @@ import { getLocalDateKey } from "@/lib/dateUtils";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import { executeSaga } from "@/lib/transactionCoordinator";
+import { connectDb } from "@/lib/mongodb";
+
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
@@ -90,6 +92,36 @@ export const POST = withErrorHandler(async (request) => {
           });
         },
         compensate: null, // Attendance writes are append-only
+      },
+      {
+        name: "write_mongodb_attendance",
+        execute: async () => {
+          if (alreadyRecorded) {
+            return;
+          }
+          const mongoDB = await connectDb();
+          await mongoDB.collection("attendance").updateOne(
+            { userId, date: normalizedDate },
+            {
+              $set: {
+                userId,
+                studentName: resolvedName,
+                email: resolvedEmail,
+                instituteId,
+                timestamp: new Date(),
+                date: normalizedDate,
+                status: "present",
+                confidenceScore: normalizedConfidence,
+                offlineSynced: false,
+              },
+            },
+            { upsert: true }
+          );
+        },
+        compensate: async () => {
+          const mongoDB = await connectDb();
+          await mongoDB.collection("attendance").deleteOne({ userId, date: normalizedDate });
+        },
       },
       {
         name: "award_xp",

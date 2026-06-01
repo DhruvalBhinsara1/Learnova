@@ -31,12 +31,41 @@ const redisKeys = {
   recentNotices: () => "sse:notices:recent",
 };
 
-// ── Connection Registry (Redis-backed) ───────────────────────────────────────
+// ── In-memory connection fallback (used when Redis is unavailable) ────────────
+const memoryConnections = new Map();
+
+function getMemoryConnectionCount(userId) {
+  return memoryConnections.get(userId) || 0;
+}
+
+function incrementMemoryConnection(userId) {
+  const count = getMemoryConnectionCount(userId) + 1;
+  memoryConnections.set(userId, count);
+  return count;
+}
+
+function decrementMemoryConnection(userId) {
+  const count = Math.max(0, getMemoryConnectionCount(userId) - 1);
+  if (count === 0) {
+    memoryConnections.delete(userId);
+  } else {
+    memoryConnections.set(userId, count);
+  }
+  return count;
+}
+
+// ── Connection Registry (Redis-backed with in-memory fallback) ────────────────
 async function registerConnection(userId) {
   const redis = getRedis();
   if (!redis) {
-    // Fallback: allow connection without limit enforcement (dev without Redis)
-    return { connId: Date.now().toString(36) + Math.random().toString(36).slice(2), allowed: true };
+    // Fallback: use in-memory connection tracking with the same limit
+    const count = incrementMemoryConnection(userId);
+    if (count > MAX_PER_USER) {
+      decrementMemoryConnection(userId);
+      return { connId: null, allowed: false };
+    }
+    const connId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    return { connId, allowed: true };
   }
 
   const key = redisKeys.connectionCount(userId);
@@ -56,7 +85,10 @@ async function registerConnection(userId) {
 
 async function unregisterConnection(userId) {
   const redis = getRedis();
-  if (!redis) return;
+  if (!redis) {
+    decrementMemoryConnection(userId);
+    return;
+  }
   const key = redisKeys.connectionCount(userId);
   const newCount = await redis.decr(key);
   if (newCount < 0) {
@@ -86,7 +118,7 @@ export async function GET(request) {
     const profile = await getUserProfile(decodedToken.uid);
     const userRole = profile?.role || "student";
     const userId = decodedToken.uid;
-    const instituteId = profile?.instituteId || null;
+    const instituteId = profile?.instituteId || profile?.uid;
 
     const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
     const rateLimitResult = await checkRateLimit(`notices_stream_${ip}_${userId}`);
@@ -173,37 +205,62 @@ export async function GET(request) {
           return;
         }
 
-        // Poll for new notices from Redis sorted set
+        // Poll for new notices from Redis (fallback to MongoDB when Redis is unavailable)
         const pollForNotices = async () => {
           if (!isConnected) return;
           try {
             const redis = getRedis();
-            if (!redis) return;
-            const key = redisKeys.recentNotices();
-            const lastScore = lastNoticeTime.getTime();
-            const members = await redis.zrange(key, lastScore, "+inf", {
-              byScore: true,
-              rev: false,
-            });
-            for (const member of members) {
-              if (!isConnected) break;
-              try {
-                const doc = typeof member === "string" ? JSON.parse(member) : member;
-                if (
-                  doc.targetAudience &&
-                  doc.targetAudience.includes(userRole) &&
-                  String(doc.instituteId) === String(instituteId)
-                ) {
-                  sendEvent("new-notice", {
-                    ...doc,
-                    id: doc._id || doc.id,
-                  });
-                }
-                const memberTime = new Date(doc.createdAt).getTime();
-                if (memberTime > lastNoticeTime.getTime()) {
+            if (redis) {
+              const key = redisKeys.recentNotices();
+              const lastScore = lastNoticeTime.getTime();
+              const members = await redis.zrange(key, lastScore, "+inf", {
+                byScore: true,
+                rev: false,
+              });
+              for (const member of members) {
+                if (!isConnected) break;
+                try {
+                  const doc = typeof member === "string" ? JSON.parse(member) : member;
+                  if (
+                    doc.targetAudience &&
+                    doc.targetAudience.includes(userRole) &&
+                    String(doc.instituteId) === String(instituteId)
+                  ) {
+                    sendEvent("new-notice", {
+                      ...doc,
+                      id: doc._id || doc.id,
+                    });
+                  }
+                  const memberTime = new Date(doc.createdAt).getTime();
+                  if (memberTime > lastNoticeTime.getTime()) {
+                    lastNoticeTime = new Date(doc.createdAt);
+                  }
+                } catch {}
+              }
+            } else {
+              // Fallback: poll MongoDB directly
+              const db = await connectDbForSSE();
+              const noticesCollection = db.collection("notices");
+              const newNotices = await noticesCollection
+                .find({
+                  targetAudience: userRole,
+                  instituteId: instituteId,
+                  createdAt: { $gt: lastNoticeTime },
+                })
+                .sort({ createdAt: -1 })
+                .limit(20)
+                .toArray();
+              for (const doc of newNotices) {
+                if (!isConnected) break;
+                sendEvent("new-notice", {
+                  ...doc,
+                  id: doc._id.toString(),
+                });
+                const docTime = new Date(doc.createdAt).getTime();
+                if (docTime > lastNoticeTime.getTime()) {
                   lastNoticeTime = new Date(doc.createdAt);
                 }
-              } catch {}
+              }
             }
           } catch {}
         };

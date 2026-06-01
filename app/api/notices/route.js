@@ -35,14 +35,14 @@ async function publishNotice(request) {
 
   const adminDb = getAdminDb();
 
-  const instituteId = profile.instituteId || null;
+  const instituteId = profile.instituteId || profile.uid;
 
   const newNotice = {
     ...validData,
+    instituteId,
     author: decodedToken.name || decodedToken.email.split("@")[0],
     authorId: decodedToken.uid,
     authorRole: profile.role,
-    instituteId,
     createdAt: new Date(),
     updatedAt: new Date(),
   };

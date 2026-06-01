@@ -14,13 +14,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export const POST = async (request) => {
-  try {
-    const decodedToken = await requireAuth(request);
 
-    const rateLimitResult = await checkRateLimit(
-      `avatar_upload_${decodedToken.uid}`
-    );
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 

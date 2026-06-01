@@ -28,9 +28,7 @@ jobs:
           cache: npm
 
       - name: 📚 Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+        run: npm ci
 
       - name: 🧪 Run unit tests
         run: npm test

@@ -170,7 +170,7 @@ describe("/api/images route orchestration", () => {
     requireAuth.mockResolvedValue({ uid });
     connectDb.mockResolvedValue({
       collection: vi.fn().mockReturnValue({
-        findOne: vi.fn().mockResolvedValue({ _id: ownId }),
+        findOne: vi.fn().mockResolvedValue({ _id: ownId, instituteId: "test-institute" }),
       }),
     });
     getUserProfile.mockResolvedValue({ role: "teacher" });
