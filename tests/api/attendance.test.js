@@ -40,6 +40,17 @@ vi.mock('@/lib/rateLimit', () => ({
   checkRateLimit: vi.fn(() => ({ allowed: true })),
 }));
 
+vi.mock('@/lib/mongodb', () => ({
+  connectDb: vi.fn(() => ({
+    collection: vi.fn(() => ({
+      insertOne: vi.fn(),
+      updateOne: vi.fn(),
+      deleteOne: vi.fn(),
+      findOne: vi.fn(),
+    })),
+  })),
+}));
+
 vi.mock('@/lib/errors', () => {
   class AppError extends Error {
     constructor(message, statusCode = 500) {
