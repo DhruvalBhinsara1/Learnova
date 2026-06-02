@@ -96,13 +96,13 @@ self.addEventListener("sync", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "TRIGGER_SYNC_PENDING_ACTIONS") {
-    event.waitUntil(handleSync());
+    event.waitUntil(handleSync().catch(err => console.error("[SW] Message sync failed:", err)));
   } else if (event.data && event.data.type === "CLEAR_USER_CACHE") {
     const userHash = event.data.userHash;
     if (userHash) {
-      event.waitUntil(clearCacheForUser(userHash));
+      event.waitUntil(clearCacheForUser(userHash).catch(err => console.error("[SW] Clear user cache failed:", err)));
     } else {
-      event.waitUntil(clearUserCaches());
+      event.waitUntil(clearUserCaches().catch(err => console.error("[SW] Clear all caches failed:", err)));
     }
   }
 });
@@ -165,7 +165,7 @@ self.addEventListener("fetch", (event) => {
           if (networkResponse.ok) {
             const cloned = networkResponse.clone();
             const cachePutPromise = cache.put(cacheKey, cloned).then(() => trimCache(cache));
-            event.waitUntil(cachePutPromise);
+            event.waitUntil(cachePutPromise.catch(err => console.error("[SW] Cache put failed:", err)));
           }
           return networkResponse;
         } catch {
