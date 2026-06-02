@@ -230,7 +230,7 @@ describe("attendance record route", () => {
       confidenceScore: 59,
     });
     let response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Confidence score too low");
+    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
 
     // Scenario 2: above 100 — caught by schema validation
     parseJSON.mockResolvedValue({
