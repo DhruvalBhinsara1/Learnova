@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { TrendingUp } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertTriangle,
+} from "lucide-react";
 import { db } from "@/lib/firebaseConfig";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Doughnut, Line, Bar } from "react-chartjs-2";
@@ -237,7 +242,41 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
         attendance: Math.min(100, Math.max(0, attendance)),
       };
     });
+    
   }, [attendanceRecords]);
+  const trendSummary = useMemo(() => {
+  const trendData =
+    activeTrendTab === "weekly"
+      ? weeklyTrend
+      : monthlyTrend;
+
+  if (trendData.length < 2) {
+    return {
+      trend: "stable",
+      change: 0,
+    };
+  }
+
+  const current =
+    trendData[trendData.length - 1].attendance;
+
+  const previous =
+    trendData[trendData.length - 2].attendance;
+
+  const change = current - previous;
+
+  let trend = "stable";
+
+  if (change > 0) trend = "increase";
+  if (change < 0) trend = "decrease";
+
+  return {
+    trend,
+    change,
+  };
+}, [weeklyTrend, monthlyTrend, activeTrendTab]);
+
+const isAtRisk = stats.percentage < 75;
 
   const donutData = useMemo(
     () => ({
@@ -400,6 +439,79 @@ const AttendanceAnalytics = ({ userId, recentActivity = [] }) => {
           ))}
         </div>
       </div>
+      <div className="mb-6 rounded-3xl border border-slate-200/70 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-5">
+  <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+    Attendance Trend Summary
+  </h4>
+
+  <div className="grid md:grid-cols-3 gap-4">
+
+    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+      <p className="text-sm text-gray-500">
+        Current Attendance
+      </p>
+
+      <p className="text-3xl font-bold">
+        {stats.percentage}%
+      </p>
+    </div>
+
+    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+      <p className="text-sm text-gray-500 mb-2">
+        Trend Status
+      </p>
+
+      <div className="flex items-center gap-2">
+
+        {trendSummary.trend === "increase" && (
+          <>
+            <TrendingUp className="w-5 h-5 text-green-500" />
+            <span className="text-green-500 font-medium">
+              Improved by {Math.abs(trendSummary.change)}%
+            </span>
+          </>
+        )}
+
+        {trendSummary.trend === "decrease" && (
+          <>
+            <TrendingDown className="w-5 h-5 text-red-500" />
+            <span className="text-red-500 font-medium">
+              Decreased by {Math.abs(trendSummary.change)}%
+            </span>
+          </>
+        )}
+
+        {trendSummary.trend === "stable" && (
+          <>
+            <Minus className="w-5 h-5 text-yellow-500" />
+            <span className="text-yellow-500 font-medium">
+              Stable Attendance
+            </span>
+          </>
+        )}
+
+      </div>
+    </div>
+
+    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4">
+      <p className="text-sm text-gray-500 mb-2">
+        Risk Status
+      </p>
+
+      {isAtRisk ? (
+        <div className="flex items-center gap-2 text-red-500">
+          <AlertTriangle className="w-5 h-5" />
+          <span>At Risk (&lt;75%)</span>
+        </div>
+      ) : (
+        <div className="text-green-500 font-medium">
+          Good Standing
+        </div>
+      )}
+    </div>
+
+  </div>
+</div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] mb-6">
         <div>
