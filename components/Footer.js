@@ -1,5 +1,5 @@
 "use client";
-import { FaDiscord } from "react-icons/fa";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -120,17 +120,6 @@ export default function Footer() {
     <SocialIcon key={s.label} {...s} />
   ))}
 
-  <motion.a
-    href="https://discord.gg/"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Discord"
-    whileHover={{ scale: 1.15, y: -3 }}
-    whileTap={{ scale: 0.95 }}
-    className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:border-purple-500/50 hover:text-purple-400"
-  >
-    <FaDiscord size={18} />
-  </motion.a>
 </div>
       </div>    {/* Quick Links */}
           <div className="space-y-5">
