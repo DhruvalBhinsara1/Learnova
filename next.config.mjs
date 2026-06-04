@@ -122,6 +122,10 @@ const nextConfig = {
       encoding: false,
       canvas: false,
     };
+    config.externals = config.externals || [];
+    if (Array.isArray(config.externals)) {
+      config.externals.push("canvas");
+    }
     return config;
   },
   eslint: {

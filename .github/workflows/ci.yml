@@ -38,22 +38,35 @@ jobs:
       - name: 🎨 Run Prettier Code Formatting Check
         run: npm run format:check
 
-      - name: 🔧 Fix Rollup native binding (Linux CI)
+      - name: 🔧 Fix native bindings for Linux CI
         run: |
-          mkdir -p node_modules/@rollup/rollup-linux-x64-gnu
-          TAR=$(npm pack "@rollup/rollup-linux-x64-gnu@$(node -p "require('./node_modules/rollup/package.json').version")")
-          tar -xzf "$TAR" -C node_modules/@rollup/rollup-linux-x64-gnu --strip-components=1
-          rm -f "$TAR"
+          fix_native() {
+            local pkg="$1" dir="$2"
+            mkdir -p "$dir"
+            TAR=$(npm pack "$pkg" 2>/dev/null) || return 0
+            tar -xzf "$TAR" -C "$dir" --strip-components=1
+            rm -f "$TAR"
+          }
+
+          # Rollup
+          RV=$(node -p "require('./node_modules/rollup/package.json').version")
+          fix_native "@rollup/rollup-linux-x64-gnu@$RV" node_modules/@rollup/rollup-linux-x64-gnu
+
+          # Parcel Watcher
+          PV=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
+          fix_native "@parcel/watcher-linux-x64-glibc@$PV" node_modules/@parcel/watcher-linux-x64-glibc
+
+          # Lightning CSS (needed by next/font)
+          LV=$(node -p "require('./node_modules/lightningcss/package.json').version")
+          fix_native "lightningcss-linux-x64-gnu@$LV" node_modules/lightningcss-linux-x64-gnu
+          cp node_modules/lightningcss-linux-x64-gnu/*.node node_modules/lightningcss/ 2>/dev/null || true
+
+          # Tailwind CSS Oxide
+          OV=$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")
+          fix_native "@tailwindcss/oxide-linux-x64-gnu@$OV" node_modules/@tailwindcss/oxide-linux-x64-gnu
 
       - name: 🧪 Run unit tests
         run: npm test
-
-      - name: 🔧 Fix Tailwind CSS native binding
-        run: |
-          mkdir -p node_modules/@tailwindcss/oxide-linux-x64-gnu
-          TAR=$(npm pack "@tailwindcss/oxide-linux-x64-gnu@$(node -p "require('./node_modules/@tailwindcss/oxide/package.json').version")")
-          tar -xzf "$TAR" -C node_modules/@tailwindcss/oxide-linux-x64-gnu --strip-components=1
-          rm -f "$TAR"
 
       - name: ⚡ Cache Next.js build
         uses: actions/cache@v4
@@ -63,20 +76,6 @@ jobs:
           key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
-
-      - name: 🔧 Fix Parcel Watcher native binding (Linux CI)
-        run: |
-          mkdir -p node_modules/@parcel/watcher-linux-x64-glibc
-          TAR=$(npm pack "@parcel/watcher-linux-x64-glibc@$(node -p "require('./node_modules/@parcel/watcher/package.json').version")")
-          tar -xzf "$TAR" -C node_modules/@parcel/watcher-linux-x64-glibc --strip-components=1
-          rm -f "$TAR"
-
-      - name: 🔧 Re-check Rollup native binding for build
-        run: |
-          mkdir -p node_modules/@rollup/rollup-linux-x64-gnu
-          TAR=$(npm pack "@rollup/rollup-linux-x64-gnu@$(node -p "require('./node_modules/rollup/package.json').version")")
-          tar -xzf "$TAR" -C node_modules/@rollup/rollup-linux-x64-gnu --strip-components=1
-          rm -f "$TAR"
 
       - name: 🔨 Build project
         run: npm run build
