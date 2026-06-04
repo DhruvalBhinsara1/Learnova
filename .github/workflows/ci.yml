@@ -38,6 +38,11 @@ jobs:
       - name: 🎨 Run Prettier Code Formatting Check
         run: npm run format:check
 
+      - name: 🔧 Fix Rollup native binding (Linux CI)
+        run: |
+          ROLLUP_VER=$(node -p "require('./node_modules/rollup/package.json').version")
+          npm install --legacy-peer-deps --no-save "@rollup/rollup-linux-x64-gnu@${ROLLUP_VER}"
+
       - name: 🧪 Run unit tests
         run: npm test
 
