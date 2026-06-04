@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import useLabels from "@/components/useLabels";
 import { recordAttendance } from "@/services/attendanceService";
@@ -13,19 +12,10 @@ import { syncAttendanceQueue } from "@/lib/syncService";
 const MIN_CONFIDENCE_TO_RECORD = 60;
 const EAR_THRESHOLD = 0.25;
 const BLINK_COOLDOWN_MS = 300;
-const PROCESSING_INTERVAL_MS = 100; // ~10 FPS
+const PROCESSING_INTERVAL_MS = 100;
 
-/**
- * FaceRecognizer Component
- *
- * Performs real-time camera stream capturing, TinyFaceDetector identification,
- * and liveness detection (blink checks) to record user attendance securely.
- *
- * @param {Object} props - Component properties.
- * @param {Object} props.authUser - The currently authenticated Firebase user.
- * @returns {React.ReactElement} The webcam face recognition and liveness tracking interface.
- */
 export default function FaceRecognizer({ authUser }) {
+  // ── REFS: Track lifecycle and streams ──────────
   const isMounted = useRef(true);
   const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
@@ -34,11 +24,9 @@ export default function FaceRecognizer({ authUser }) {
   const cachedDescriptorsRef = useRef(null);
   const faceMatcherRef = useRef(null);
   const faceapiRef = useRef(null);
-  const abortControllerRef = useRef(null);
-
-  // Animation and Liveness Refs
   const animationFrameId = useRef(null);
   const lastDetectionTime = useRef(0);
+  
   const blinkStateRef = useRef({
     isEyeClosed: false,
     blinkCount: 0,
@@ -46,11 +34,7 @@ export default function FaceRecognizer({ authUser }) {
     lastBlinkTime: 0,
   });
 
-  const {
-    labels: fetchedLabels,
-    loading: labelsLoading,
-    error,
-  } = useLabels(authUser);
+  const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels(authUser);
 
   const [message, setMessage] = useState("Loading AI models...");
   const [finished, setFinished] = useState(false);
@@ -58,11 +42,29 @@ export default function FaceRecognizer({ authUser }) {
   const [isLoading, setIsLoading] = useState(true);
   const [confidence, setConfidence] = useState(0);
   const [attendanceState, setAttendanceState] = useState("idle");
-
-  // Liveness State Machine: IDLE -> DETECTING_FACE -> VERIFYING_LIVENESS -> AUTHENTICATED | FAILED
   const [livenessState, setLivenessState] = useState("IDLE");
   const [blinkPrompt, setBlinkPrompt] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  const [isOffline, setIsOffline] = useState(typeof window !== "undefined" ? !navigator.onLine : false);
+
+  // ── HARD CLEANUP FUNCTION ──────────
+  const stopAllMedia = useCallback(() => {
+    isMounted.current = false;
+    if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      activeStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.pause();
+    }
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return stopAllMedia;
+  }, [stopAllMedia]);
 
   const [isOffline, setIsOffline] = useState(
     typeof window !== "undefined" ? !navigator.onLine : false,
@@ -340,18 +342,13 @@ export default function FaceRecognizer({ authUser }) {
   };
 
   const processVideo = async () => {
-    if (
-      !videoRef.current ||
-      !canvasRef.current ||
-      !faceMatcherRef.current ||
-      !isMounted.current ||
-      abortControllerRef.current?.signal.aborted
-    ) {
-      return;
-    }
+    if (!isMounted.current || !videoRef.current || videoRef.current.paused) return;
 
-    const faceapi = await import("face-api.js");
-    faceapiRef.current = faceapi;
+    let faceapi = faceapiRef.current;
+    if (!faceapi) {
+      faceapi = await import("face-api.js");
+      faceapiRef.current = faceapi;
+    }
     if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
     const video = videoRef.current;
 
