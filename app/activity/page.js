@@ -286,6 +286,20 @@ export default function ActivityPage() {
       gradient: "from-yellow-500 to-amber-600",
       type: "game",
     },
+    {
+      id: 9,
+      title: "Factors and Multiples",
+      description: "Master factors and multiples with an interactive challenge",
+      category: "math",
+      level: "elementary",
+      duration: "15 min",
+      participants: 4123,
+      difficulty: "Beginner",
+      rating: 4.5,
+      icon: Target,
+      gradient: "from-cyan-500 to-blue-600",
+      type: "quiz",
+    }
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();

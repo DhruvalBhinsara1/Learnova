@@ -20,6 +20,8 @@ import {
   BarChart3,
   Zap,
   Clock,
+  Copy,
+  Check,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
@@ -448,6 +450,7 @@ export default function LearnovaChatbot() {
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentCategory, setCurrentCategory] = useState("general");
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
   const [isScrolling, setIsScrolling] = useState(false);
 
   const [chatHistory, setChatHistory] = useState([]);
@@ -456,6 +459,20 @@ export default function LearnovaChatbot() {
   const [historyPage, setHistoryPage] = useState(1);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const isMounted = useIsMounted();
+
+  const handleCopyMessage = async (messageId, text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+
+      setCopiedMessageId(messageId);
+
+      setTimeout(() => {
+        setCopiedMessageId(null);
+      }, 2000);
+    } catch (error) {
+      console.error("Copy failed:", error);
+    }
+  };
 
   // Fetch callback handler pulling recent activity logs from MongoDB endpoint
   const fetchChatHistory = useCallback(async (page = 1, append = false) => {
@@ -846,7 +863,32 @@ export default function LearnovaChatbot() {
                       <Bot size={16} />
                     </div>
                   )}
-                  <div className="flex flex-col max-w-[82%]">
+                  <div className="flex flex-col max-w-[82%] group">
+
+                    {msg.isBot && (
+                      <div className="flex justify-end mb-1">
+                        <button
+                          onClick={() =>
+                            handleCopyMessage(msg.id, msg.text)
+                          }
+                          className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-purple-500/10 text-purple-400 cursor-pointer"
+                          title="Copy response"
+                        >
+                          {copiedMessageId === msg.id ? (
+                            <>
+                              <Check size={12} />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={12} />
+                              Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
                     <div className={`p-3 rounded-2xl text-sm leading-relaxed ${msg.isBot ? themeTokens.botMsg : themeTokens.userMsg}`}>
                       <ReactMarkdown components={markdownComponents}>
                         {msg.text}

@@ -316,5 +316,38 @@ describe("Notice Board Isolation & Security Tests", () => {
       expect(mockRedisZadd).toHaveBeenCalled();
       expect(mockRedisExpire).toHaveBeenCalled();
     });
+
+    test("GET /api/notices/stream - fallback instituteId to uid when profile has no instituteId", async () => {
+      verifyFirebaseToken.mockResolvedValue({
+        valid: true,
+        decodedToken: { uid: "student-456", email: "student2@domain.com", email_verified: true },
+      });
+      // Return profile without instituteId
+      getUserProfile.mockResolvedValue({
+        role: "student",
+      });
+
+      mockMongoFindToArray.mockResolvedValue([]);
+
+      const req = createMockRequest({ authorization: "Bearer valid-token" }, {}, "http://localhost/api/notices/stream");
+      await GET(req);
+
+      expect(capturedStart).toBeDefined();
+
+      const mockController = {
+        enqueue: vi.fn(),
+        close: vi.fn(),
+      };
+
+      await capturedStart(mockController);
+
+      // Verify DB find query uses "student-456" (uid) as instituteId
+      expect(mockMongoFind).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetAudience: "student",
+          instituteId: "student-456",
+        })
+      );
+    });
   });
 });

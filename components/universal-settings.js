@@ -2,6 +2,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { getToken } from "firebase/messaging";
+import { messaging, db } from "@/lib/firebaseConfig";
+import { doc, updateDoc } from "firebase/firestore";
 import Image from "next/image";
 import {
   Settings,
@@ -112,10 +115,37 @@ export default function UniversalSettings() {
       setPushPermission(permission);
       if (permission === "granted") {
         updateSetting("notifications", "pushNotifications", true);
-        toast.success("Timetable push notifications activated! Reminders will trigger 10m before class.");
+        toast.success("Push notifications activated! Reminders will trigger via FCM.");
+        
         if ("serviceWorker" in navigator) {
-          navigator.serviceWorker.register("/sw.js")
-            .then((reg) => { })
+          navigator.serviceWorker.register("/firebase-messaging-sw.js")
+            .then(async (reg) => {
+              if (reg.active) {
+                reg.active.postMessage({
+                  type: "FIREBASE_CONFIG",
+                  config: {
+                    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+                    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+                    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+                    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+                    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+                    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+                  }
+                });
+              }
+              
+              if (messaging) {
+                try {
+                  const token = await getToken(messaging, { serviceWorkerRegistration: reg });
+                  if (token && user?.uid) {
+                    await updateDoc(doc(db, "users", user.uid), { fcmToken: token });
+                    console.log("FCM Token saved successfully");
+                  }
+                } catch (tokenErr) {
+                  console.error("Error getting FCM token:", tokenErr);
+                }
+              }
+            })
             .catch((err) => console.error("SW Registration failed:", err));
         }
       } else if (permission === "denied") {

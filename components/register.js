@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { Upload, User, Mail, Hash, CheckCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 import NextImage from "next/image";
 import { validateRequired, validateName } from "@/utils/formValidation";
 import { isValidEmail, suggestEmailCorrection } from "@/utils/emailValidation";
@@ -69,6 +70,9 @@ export default function RegisterPage() {
   const [error, setError] = useState(null);
   const [emailSuggestion, setEmailSuggestion] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useUnsavedChangesWarning(isDirty);
 
   // ✅ CORRECT LOCATION: Prefill email from auth user using useEffect
   useEffect(() => {
@@ -236,6 +240,7 @@ setEmailSuggestion(null);
         setRollNo("");
         setEmail(user?.email || ""); // ✅ Reset email to auth user's email
         setPhoto(null);
+        setIsDirty(false);
         toast.success("Registration successful!");
       } else {
         setError(data.error || "An unknown error occurred."); // ✅ Provide a default error message
@@ -300,7 +305,7 @@ setEmailSuggestion(null);
                     type="text"
                     placeholder="Enter your full name"
                     value={name}
-                    onChange={(e) => setName(e.target.value.trimStart())}
+                    onChange={(e) => { setName(e.target.value.trimStart()); setIsDirty(true); }}
                     required
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400"
                   />
@@ -317,7 +322,7 @@ setEmailSuggestion(null);
                     type="text"
                     placeholder="Enter your roll number"
                     value={rollNo}
-                    onChange={(e) => setRollNo(e.target.value)}
+                    onChange={(e) => { setRollNo(e.target.value); setIsDirty(true); }}
                     required
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400"
                   />
@@ -348,7 +353,7 @@ setEmailSuggestion(null);
                     id="profilePhoto"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setPhoto(e.target.files?.[0] || null)}
+                    onChange={(e) => { setPhoto(e.target.files?.[0] || null); setIsDirty(true); }}
                     required
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-500 file:to-violet-600 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:from-indigo-600 hover:file:to-violet-700"
                   />

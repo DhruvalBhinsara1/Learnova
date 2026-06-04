@@ -60,6 +60,8 @@ export async function POST(req) {
     let successfulImports = 0;
     const failedImports = [];
     const createdAuthUids = [];
+    const newlyCreatedUids = [];
+    const firestoreWrittenUids = [];
 
     // Batch phase 1: Firebase Auth – look up existing users in bulk
     const authIdentifiers = students.map((s) => ({ email: s.email }));
@@ -72,6 +74,7 @@ export async function POST(req) {
 
     // Batch phase 2: Create non-existing Firebase Auth users in bulk
     const usersToCreate = students.filter((s) => !existingAuthUsers.includes(s.email));
+    const newlyCreatedEmails = new Set(usersToCreate.map((s) => s.email));
     if (usersToCreate.length > 0) {
       const createResult = await admin.auth().createUsers(
         usersToCreate.map((s) => ({
@@ -101,6 +104,13 @@ export async function POST(req) {
       }
     }
 
+    // Track which UIDs were newly created (for scoped rollback)
+    for (const user of allAuthUsers.users) {
+      if (user.email && newlyCreatedEmails.has(user.email)) {
+        newlyCreatedUids.push(user.uid);
+      }
+    }
+
     // Batch phase 3: Gather all UIDs for students that passed Auth
     const validStudents = students.filter((s) => {
       const alreadyFailed = failedImports.some((f) => f.email === s.email);
@@ -115,10 +125,30 @@ export async function POST(req) {
       }
     }
 
-    // Set Firebase custom claims for all created auth users
-    await Promise.all(createdAuthUids.map(uid =>
-      admin.auth().setCustomUserClaims(uid, { role: 'student', instituteId })
-    ));
+    // Set Firebase custom claims — allSettled to handle partial failures
+    const claimsResults = await Promise.allSettled(
+      createdAuthUids.map((uid) =>
+        admin.auth().setCustomUserClaims(uid, { role: "student", instituteId })
+      )
+    );
+    const failedClaims = claimsResults.filter((r) => r.status === "rejected");
+    if (failedClaims.length > 0) {
+      const claimsSucceededUids = createdAuthUids.filter(
+        (_, i) => claimsResults[i].status === "fulfilled"
+      );
+      await Promise.allSettled(
+        claimsSucceededUids.map((uid) =>
+          admin.auth().setCustomUserClaims(uid, null)
+        )
+      );
+      if (newlyCreatedUids.length > 0) {
+        await admin.auth().deleteUsers(newlyCreatedUids);
+      }
+      return NextResponse.json(
+        { error: `Failed to set custom claims for ${failedClaims.length} users` },
+        { status: 500 }
+      );
+    }
 
     // Batch phase 4: Bulk Firestore writes
     const BATCH_LIMIT = 500;
@@ -141,6 +171,7 @@ export async function POST(req) {
         },
         { merge: true }
       );
+      firestoreWrittenUids.push(uid);
       batchCount++;
       if (batchCount >= BATCH_LIMIT) {
         await firestoreBatch.commit();
@@ -191,15 +222,48 @@ export async function POST(req) {
       try {
         await mongoUsers.bulkWrite(mongoBulkOps, { ordered: false });
       } catch (mongoError) {
-        // Rollback: delete Firebase Auth users created in this request
-        if (createdAuthUids.length > 0) {
+        // Rollback in reverse order of writes: Firestore → claims → Auth accounts
+
+        // 1. Delete Firestore documents that were written
+        if (firestoreWrittenUids.length > 0) {
           try {
-            await admin.auth().deleteUsers(createdAuthUids);
-            console.warn(`Rolled back ${createdAuthUids.length} Firebase Auth users after MongoDB write failure`);
-          } catch (rollbackError) {
-            console.error(`Failed to rollback Firebase Auth users:`, rollbackError);
+            for (let i = 0; i < firestoreWrittenUids.length; i += BATCH_LIMIT) {
+              const batch = firestore.batch();
+              firestoreWrittenUids.slice(i, i + BATCH_LIMIT).forEach((uid) => {
+                batch.delete(firestore.collection("users").doc(uid));
+              });
+              await batch.commit();
+            }
+            console.warn(`Rolled back ${firestoreWrittenUids.length} Firestore documents after MongoDB write failure`);
+          } catch (fsRollbackError) {
+            console.error(`Failed to rollback Firestore documents:`, fsRollbackError);
           }
         }
+
+        // 2. Clear custom claims on all users that received them
+        if (createdAuthUids.length > 0) {
+          try {
+            await Promise.allSettled(
+              createdAuthUids.map((uid) =>
+                admin.auth().setCustomUserClaims(uid, null)
+              )
+            );
+            console.warn(`Cleared custom claims for ${createdAuthUids.length} users after MongoDB write failure`);
+          } catch (claimsRollbackError) {
+            console.error(`Failed to clear custom claims:`, claimsRollbackError);
+          }
+        }
+
+        // 3. Delete only newly created Firebase Auth users, not pre-existing ones
+        if (newlyCreatedUids.length > 0) {
+          try {
+            await admin.auth().deleteUsers(newlyCreatedUids);
+            console.warn(`Rolled back ${newlyCreatedUids.length} newly created Firebase Auth users after MongoDB write failure`);
+          } catch (authRollbackError) {
+            console.error(`Failed to rollback Firebase Auth users:`, authRollbackError);
+          }
+        }
+
         throw mongoError;
       }
     }

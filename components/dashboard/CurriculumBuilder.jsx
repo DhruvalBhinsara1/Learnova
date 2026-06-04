@@ -25,6 +25,7 @@ import { toast } from "react-hot-toast";
 // Fetch the master courses list
 import { COURSES } from "@/lib/courses";
 import { apiFetch } from "@/lib/apiClient";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 
 
 export default function CurriculumBuilder() {
@@ -35,6 +36,9 @@ export default function CurriculumBuilder() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastSaved, setLastSaved] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useUnsavedChangesWarning(isDirty);
 
   // Track expanded state for module accordions
   const [expandedModules, setExpandedModules] = useState({});
@@ -110,6 +114,7 @@ export default function CurriculumBuilder() {
       const data = await res.json();
       if (data.success) {
         setLastSaved(new Date().toLocaleTimeString());
+        setIsDirty(false);
         toast.success(data.message || "Changes saved!", { id: toastId });
       } else {
         throw new Error(data.error);
@@ -144,6 +149,7 @@ export default function CurriculumBuilder() {
     const updated = [...modules, newModule];
     setModules(updated);
     setExpandedModules(prev => ({ ...prev, [newModule.id]: true }));
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Module created! Double-click to rename.");
   };
@@ -154,6 +160,7 @@ export default function CurriculumBuilder() {
       .filter(mod => mod.id !== moduleId)
       .map((mod, idx) => ({ ...mod, order: idx }));
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Module deleted successfully.");
   };
@@ -196,6 +203,7 @@ export default function CurriculumBuilder() {
     }
 
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     setEditingEntity(null);
   };
@@ -227,6 +235,7 @@ export default function CurriculumBuilder() {
     setModules(updated);
     // Make sure module is expanded so user sees the new lesson
     setExpandedModules(prev => ({ ...prev, [moduleId]: true }));
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success(`New ${type} added!`);
   };
@@ -245,6 +254,7 @@ export default function CurriculumBuilder() {
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
     toast.success("Lesson deleted.");
   };
@@ -263,6 +273,7 @@ export default function CurriculumBuilder() {
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
   };
 
@@ -280,6 +291,7 @@ export default function CurriculumBuilder() {
       return mod;
     });
     setModules(updated);
+    setIsDirty(true);
     syncCurriculum(updated);
   };
 
@@ -345,6 +357,7 @@ export default function CurriculumBuilder() {
       // Update order field
       updated = updated.map((mod, idx) => ({ ...mod, order: idx }));
       setModules(updated);
+      setIsDirty(true);
       syncCurriculum(updated);
     }
 
@@ -378,6 +391,7 @@ export default function CurriculumBuilder() {
         targetModule.lessons = targetModule.lessons.map((les, idx) => ({ ...les, order: idx }));
 
         setModules(updated);
+        setIsDirty(true);
         syncCurriculum(updated);
         // Force expand target module so dropped lesson is visible
         setExpandedModules(prev => ({ ...prev, [targetModuleId]: true }));

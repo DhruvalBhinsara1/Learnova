@@ -88,6 +88,31 @@ export const quizDatabase = {
       },
     ],
   },
+  "Factors and Multiples": {
+    category: "math",
+    level: "elementary",
+    timeLimit: 60, // 1 minute
+    questions: [
+      {
+        id: 1,
+        question: "What are the factors of 12?",
+        options: ["1, 2, 3, 4, 6, 12", "1, 2, 4, 8", "1, 3, 9", "1, 5, 10"],
+        answer: 0, // 1, 2, 3, 4, 6, 12
+      },
+      {
+        id: 2,
+        question: "Which of the following is a multiple of 5?",
+        options: ["12", "15", "22", "28"],
+        answer: 1, // 15
+      },
+      {
+        id: 3,
+        question: "What is the greatest common factor (GCF) of 18 and 24?",
+        options: ["2", "3", "6", "12"],
+        answer: 2, // 6
+      },
+    ],
+  },
 };
 
 /**

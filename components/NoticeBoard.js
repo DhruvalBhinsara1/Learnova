@@ -28,8 +28,53 @@ const SmartNoticeBoard = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [noticeTitle, setNoticeTitle] = useState("");
   const [noticeDescription, setNoticeDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { user, userProfile, loading: authLoading } = useAuth();
+
+  const handleCreateNotice = async (e) => {
+    if (e) e.preventDefault();
+    if (!noticeTitle.trim() || !noticeDescription.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/notices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: noticeTitle.trim(),
+          content: noticeDescription.trim(),
+          category: "general",
+          priority: "medium",
+          isPinned: false,
+          tags: [],
+          targetAudience: ["student", "teacher", "parent"],
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        toast.success("Notice published successfully!");
+        setIsCreateModalOpen(false);
+        setNoticeTitle("");
+        setNoticeDescription("");
+      } else {
+        toast.error(data.error || "Failed to publish notice");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error publishing notice");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ── Consume the shared pooled subscription from FirestoreContext ──────────
   // No local onSnapshot — notices arrive from the global singleton listener.
@@ -560,8 +605,10 @@ const SmartNoticeBoard = () => {
               </div>
 
               <div className="flex justify-end gap-3">
-                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400">Cancel</button>
-                <button className="bg-indigo-600 px-4 py-2 rounded-lg text-white">Post</button>
+                <button onClick={() => setIsCreateModalOpen(false)} disabled={isSubmitting} className="text-slate-400 disabled:opacity-50">Cancel</button>
+                <button onClick={handleCreateNotice} disabled={isSubmitting} className="bg-indigo-600 px-4 py-2 rounded-lg text-white disabled:opacity-50">
+                  {isSubmitting ? "Posting..." : "Post"}
+                </button>
               </div>
             </div>
           </motion.div>

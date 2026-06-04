@@ -40,6 +40,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/apiClient";
 import DashboardSkeleton from "@/components/ui/DashboardSkeleton";
 import { Navbar } from "./Navbar";
+import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
+import ExportDropdown from "@/components/ui/ExportDropdown";
 
 const ParentDashboard = () => {
   const { user, userProfile } = useAuth();
@@ -199,6 +201,62 @@ const ParentDashboard = () => {
       );
     });
   }, [notices, noticeSearch]);
+
+  const handleExportAttendance = (format) => {
+    if (!attendance?.records || attendance.records.length === 0) {
+      toast.error("No attendance records to export.");
+      return;
+    }
+    const exportData = attendance.records.map((record) => ({
+      Date: record.date,
+      Time: record.timestamp ? new Date(record.timestamp).toLocaleTimeString() : "-",
+      Status: record.status.toUpperCase(),
+      Confidence: `${Math.round(record.confidenceScore * 100)}%`,
+    }));
+    const filename = `attendance_${selectedChild?.name || "report"}_${new Date().toISOString().split("T")[0]}`;
+    if (format === "csv") {
+      exportToCSV(exportData, filename);
+      toast.success("Attendance exported to CSV");
+    } else {
+      const columns = [
+        { header: "Date", dataKey: "Date" },
+        { header: "Time", dataKey: "Time" },
+        { header: "Status", dataKey: "Status" },
+        { header: "Confidence", dataKey: "Confidence" },
+      ];
+      exportToPDF(exportData, columns, `Attendance Report: ${selectedChild?.name}`, filename);
+      toast.success("Attendance exported to PDF");
+    }
+  };
+
+  const handleExportGrades = (format) => {
+    if (!grades || grades.length === 0) {
+      toast.error("No grades to export.");
+      return;
+    }
+    const exportData = grades.map((g) => ({
+      Subject: g.subject,
+      Score: `${g.score} / ${g.maxScore} (${Math.round((g.score / g.maxScore) * 100)}%)`,
+      Grade: g.grade,
+      Term: g.term,
+      Published: g.date ? new Date(g.date).toLocaleDateString() : "N/A",
+    }));
+    const filename = `grades_${selectedChild?.name || "report"}_${new Date().toISOString().split("T")[0]}`;
+    if (format === "csv") {
+      exportToCSV(exportData, filename);
+      toast.success("Grades exported to CSV");
+    } else {
+      const columns = [
+        { header: "Subject", dataKey: "Subject" },
+        { header: "Score", dataKey: "Score" },
+        { header: "Grade", dataKey: "Grade" },
+        { header: "Term", dataKey: "Term" },
+        { header: "Published", dataKey: "Published" },
+      ];
+      exportToPDF(exportData, columns, `Academic Report: ${selectedChild?.name}`, filename);
+      toast.success("Grades exported to PDF");
+    }
+  };
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -571,7 +629,10 @@ const ParentDashboard = () => {
                 </div>
 
                 <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6 shadow-xl lg:col-span-2 space-y-4">
-                  <h3 className="text-lg font-bold">Day-by-Day Logs</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold">Day-by-Day Logs</h3>
+                    <ExportDropdown onExport={handleExportAttendance} />
+                  </div>
 
                   {!attendance?.records || attendance.records.length === 0 ? (
                     <div className="py-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
@@ -606,7 +667,10 @@ const ParentDashboard = () => {
             {/* ACADEMICS TAB */}
             {activeTab === "academics" && (
               <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6 shadow-xl space-y-6">
-                <h3 className="text-lg font-bold">Subject Grade Reports</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold">Subject Grade Reports</h3>
+                  <ExportDropdown onExport={handleExportGrades} />
+                </div>
 
                 {grades.length === 0 ? (
                   <div className="py-12 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">

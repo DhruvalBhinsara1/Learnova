@@ -19,15 +19,32 @@ const NoticeCreationForm = ({ onSuccess, onCancel }) => {
     
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "notices"), {
-        title,
-        content: description,
-        author: userProfile?.name || user?.displayName || "Admin",
-        createdAt: serverTimestamp(),
+      const token = await user.getIdToken();
+      const response = await fetch("/api/notices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          content: description.trim(),
+          category: "general",
+          priority: "medium",
+          isPinned: false,
+          tags: [],
+          targetAudience: ["student", "teacher", "parent"],
+        }),
       });
-      toast.success("Notice published!");
-      onSuccess();
-    } catch {
+      const data = await response.json();
+      if (response.ok && data.success) {
+        toast.success("Notice published!");
+        onSuccess();
+      } else {
+        toast.error(data.error || "Failed to publish.");
+      }
+    } catch (err) {
+      console.error(err);
       toast.error("Failed to publish.");
     } finally {
       setIsSubmitting(false);

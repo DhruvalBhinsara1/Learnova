@@ -4,10 +4,9 @@ import { checkRateLimit } from "@/lib/rateLimit";
 import {
   extractImageFileFromFormData,
   updateUserImageInDb,
-  uploadAvatarToBlob,
 } from "@/lib/images/imagesService";
+import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
 import { ValidationError } from "@/lib/errors";
-import { del } from "@vercel/blob";
 
 vi.mock("next/server", () => ({
   NextResponse: {
@@ -18,8 +17,9 @@ vi.mock("next/server", () => ({
   },
 }));
 
-vi.mock("@vercel/blob", () => ({
-  del: vi.fn().mockResolvedValue(undefined),
+vi.mock("@/lib/services/uploadService", () => ({
+  processAndUploadFile: vi.fn(),
+  activeStorage: { delete: vi.fn().mockResolvedValue(undefined) },
 }));
 
 vi.mock("@/lib/rbac", () => ({
@@ -33,7 +33,6 @@ vi.mock("@/lib/rateLimit", () => ({
 vi.mock("@/lib/images/imagesService", () => ({
   extractImageFileFromFormData: vi.fn(),
   updateUserImageInDb: vi.fn(),
-  uploadAvatarToBlob: vi.fn(),
 }));
 
 describe("POST /api/upload/avatar", () => {
@@ -58,8 +57,8 @@ describe("POST /api/upload/avatar", () => {
     };
 
     extractImageFileFromFormData.mockReturnValue(file);
-    uploadAvatarToBlob.mockResolvedValue({
-      blobUrl: "https://public.blob.vercel-storage.com/avatar.jpg",
+    processAndUploadFile.mockResolvedValue({
+      url: "https://public.blob.vercel-storage.com/avatar.jpg",
     });
 
     const response = await POST(createRequest());
@@ -67,10 +66,7 @@ describe("POST /api/upload/avatar", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.url).toBe("https://public.blob.vercel-storage.com/avatar.jpg");
-    expect(uploadAvatarToBlob).toHaveBeenCalledWith({
-      file,
-      uid: "user-123",
-    });
+    expect(processAndUploadFile).toHaveBeenCalledWith(file, "avatars/user-123");
     expect(updateUserImageInDb).toHaveBeenCalledWith({
       firebaseUid: "user-123",
       imageUrl: "https://public.blob.vercel-storage.com/avatar.jpg",
@@ -88,7 +84,7 @@ describe("POST /api/upload/avatar", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Invalid image type");
-    expect(uploadAvatarToBlob).not.toHaveBeenCalled();
+    expect(processAndUploadFile).not.toHaveBeenCalled();
   });
 
   it("deletes an uploaded blob if the database update fails", async () => {
@@ -99,14 +95,14 @@ describe("POST /api/upload/avatar", () => {
     };
 
     extractImageFileFromFormData.mockReturnValue(file);
-    uploadAvatarToBlob.mockResolvedValue({
-      blobUrl: "https://public.blob.vercel-storage.com/avatar.jpg",
+    processAndUploadFile.mockResolvedValue({
+      url: "https://public.blob.vercel-storage.com/avatar.jpg",
     });
     updateUserImageInDb.mockRejectedValue(new Error("database unavailable"));
 
     const response = await POST(createRequest());
 
     expect(response.status).toBe(500);
-    expect(del).toHaveBeenCalledWith("https://public.blob.vercel-storage.com/avatar.jpg");
+    expect(activeStorage.delete).toHaveBeenCalledWith("https://public.blob.vercel-storage.com/avatar.jpg");
   });
 });

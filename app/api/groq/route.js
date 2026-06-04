@@ -32,7 +32,7 @@ export const POST = withErrorHandler(async (request) => {
   const sanitizedMessage = sanitizeMessage(trimmedMessage);
 
   try {
-    const content = await callGroq(sanitizedMessage, validation.messages, decodedToken.uid);
+    const content = await callGroq(sanitizedMessage, validation.messages, decodedToken.uid, validation.context);
     return jsonSuccess({ message: content });
   } catch (error) {
     if (error.name === "AbortError" || error.status === 504) {

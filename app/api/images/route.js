@@ -13,9 +13,9 @@ import {
   getImageResponseHeaders,
   getUserImageFromDb,
   updateUserImageInDb,
-  uploadAvatarToBlob,
   validateFaceDescriptor,
 } from "@/lib/images/imagesService";
+import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
 
 export const dynamic = "force-dynamic";
 
@@ -68,23 +68,20 @@ export const POST = withErrorHandler(async (request) => {
   const faceDescriptor = validateFaceDescriptor(rawFaceDescriptor);
   const file = extractImageFileFromFormData(formData);
 
-  // Upload new avatar to Vercel Blob
-  const { blobUrl } = await uploadAvatarToBlob({
-    file,
-    uid: decodedToken.uid,
-  });
+  // Upload new avatar using the secure service
+  const { url } = await processAndUploadFile(file, `images/${decodedToken.uid}`);
 
   try {
     // Atomically update user image and handle face descriptor (unset if not provided)
     await updateUserImageInDb({
       firebaseUid: decodedToken.uid,
-      imageUrl: blobUrl,
+      imageUrl: url,
       faceDescriptor,
     });
   } catch (error) {
-    await Promise.resolve(del(blobUrl)).catch(() => {});
+    await activeStorage.delete(url).catch(() => {});
     throw error;
   }
 
-  return NextResponse.json({ success: true, url: blobUrl });
+  return NextResponse.json({ success: true, url });
 });

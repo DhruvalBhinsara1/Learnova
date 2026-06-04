@@ -11,7 +11,8 @@ import {
   CheckCircle,
   PlayCircle,
   Users,
-  Trash2
+  Trash2,
+  Award
 } from "lucide-react";
 import ShareButton from "@/components/ui/ShareButton";
 import StudyDeck from "@/components/flashcards/StudyDeck";
@@ -24,6 +25,8 @@ import { routeParamSchema } from "@/lib/validations/auth";
 import MarkdownRenderer from "@/components/ui/MarkdownRenderer";
 import { apiFetch } from "@/lib/apiClient";
 import { addRecentActivity } from "@/utils/recentActivity";
+import { useAuth } from "@/hooks/useAuth";
+import { generateCertificatePDF } from "@/utils/pdf/generateCertificatePDF";
 
 
 export default function CourseDetailPage() {
@@ -35,6 +38,42 @@ export default function CourseDetailPage() {
   if (!validationCheck.success) {
     notFound();
   }
+
+  // Mock course data matching params.id
+  const course = {
+    id: params.id || "nextjs-mastery",
+    title: "Advanced Next.js & React Architecture",
+    description: `Master **React Server Components (RSC)**, advanced rendering patterns (like *Partial Prerendering*), state management, and optimized deployment pipelines for modern web applications.
+
+### Key Learning Objectives
+- **Server/Client boundary** decoupling for performance.
+- Dynamic caching configurations & middleware orchestration.
+- Scale databases with pooling and high-performance querying.`,
+    instructor: "Dr. Elena Rostova",
+    duration: "12 hours • 24 lessons",
+    difficulty: "Advanced",
+    rating: "4.9 (1,240 ratings)",
+    modules: [
+      {
+        title: "Module 1: React Server Components (RSC) Deep Dive",
+        lessons: [
+          { title: "Understanding the Server/Client Boundary", duration: "18 mins", completed: true },
+          { title: "Data Fetching Patterns with Suspense", duration: "25 mins", completed: true },
+          { title: "Streaming and Progressive Hydration", duration: "20 mins", completed: false }
+        ]
+      },
+      {
+        title: "Module 2: Advanced Routing & Rendering",
+        lessons: [
+          { title: "Parallel and Intercepted Routes", duration: "32 mins", completed: false },
+          { title: "Dynamic Route Handlers & Middleware", duration: "15 mins", completed: false },
+          { title: "On-demand Incremental Static Regeneration (ISR)", duration: "22 mins", completed: false }
+        ]
+      }
+    ]
+  };
+
+  const { user } = useAuth();
 
   const [mounted, setMounted] = useState(false);
   const [isPodActive, setIsPodActive] = useState(false);
@@ -48,6 +87,12 @@ export default function CourseDetailPage() {
   const [lastProgress, setLastProgress] = useState(null);
   const [notes, setNotes] = useState([]);
   const [noteText, setNoteText] = useState("");
+
+  // --- Dynamic Completion & Certificate States ---
+  const [completedLessons, setCompletedLessons] = useState({});
+  const [completionPercentage, setCompletionPercentage] = useState(0);
+  const [completionDate, setCompletionDate] = useState("");
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   // --- AI TIMELINE FEATURE STATES ---
   const videoRef = useRef(null);
@@ -93,10 +138,70 @@ export default function CourseDetailPage() {
           setNotes(JSON.parse(savedNotes));
         } catch (e) { console.error("Failed to parse notes", e); }
       }
+
+      // Load completed lessons
+      const savedCompleted = localStorage.getItem(`learnova_completed_lessons_${params.id}`);
+      if (savedCompleted) {
+        setCompletedLessons(JSON.parse(savedCompleted));
+      } else {
+        // Build initial completed lessons from the default mock structure
+        const initialCompleted = {};
+        course.modules.forEach(mod => {
+          mod.lessons.forEach(les => {
+            if (les.completed) {
+              initialCompleted[les.title] = true;
+            }
+          });
+        });
+        setCompletedLessons(initialCompleted);
+        localStorage.setItem(`learnova_completed_lessons_${params.id}`, JSON.stringify(initialCompleted));
+      }
+
+      // Load stable completion date
+      const savedDate = localStorage.getItem(`learnova_course_completed_date_${params.id}`);
+      if (savedDate) {
+        setCompletionDate(savedDate);
+      }
     } catch (e) {
       console.error("Failed to load progress:", e);
     }
   }, []);
+
+  // Update completion percentage and record date when hitting 100%
+  useEffect(() => {
+    if (!mounted) return;
+    const totalLessons = course.modules.reduce((sum, mod) => sum + mod.lessons.length, 0);
+    const completedCount = course.modules.reduce((sum, mod) => {
+      return sum + mod.lessons.filter(les => completedLessons[les.title]).length;
+    }, 0);
+    const pct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+    setCompletionPercentage(pct);
+
+    if (pct === 100) {
+      let date = localStorage.getItem(`learnova_course_completed_date_${params.id}`);
+      if (!date) {
+        date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        localStorage.setItem(`learnova_course_completed_date_${params.id}`, date);
+      }
+      setCompletionDate(date);
+    } else {
+      localStorage.removeItem(`learnova_course_completed_date_${params.id}`);
+      setCompletionDate("");
+    }
+  }, [completedLessons, mounted, params.id]);
+
+  const toggleLesson = (lessonTitle) => {
+    const next = {
+      ...completedLessons,
+      [lessonTitle]: !completedLessons[lessonTitle]
+    };
+    setCompletedLessons(next);
+    try {
+      localStorage.setItem(`learnova_completed_lessons_${params.id}`, JSON.stringify(next));
+    } catch (e) {
+      console.error("Failed to save progress", e);
+    }
+  };
 
   const saveProgress = (lesson, moduleTitle) => {
     const progressData = {
@@ -157,41 +262,8 @@ export default function CourseDetailPage() {
       console.error("failed to record recent activity", e);
     }
   }, [params.id]);
+
   if (!mounted) return null;
-
-  // Mock course data matching params.id
-  const course = {
-    id: params.id || "nextjs-mastery",
-    title: "Advanced Next.js & React Architecture",
-    description: `Master **React Server Components (RSC)**, advanced rendering patterns (like *Partial Prerendering*), state management, and optimized deployment pipelines for modern web applications.
-
-### Key Learning Objectives
-- **Server/Client boundary** decoupling for performance.
-- Dynamic caching configurations & middleware orchestration.
-- Scale databases with pooling and high-performance querying.`,
-    instructor: "Dr. Elena Rostova",
-    duration: "12 hours • 24 lessons",
-    difficulty: "Advanced",
-    rating: "4.9 (1,240 ratings)",
-    modules: [
-      {
-        title: "Module 1: React Server Components (RSC) Deep Dive",
-        lessons: [
-          { title: "Understanding the Server/Client Boundary", duration: "18 mins", completed: true },
-          { title: "Data Fetching Patterns with Suspense", duration: "25 mins", completed: true },
-          { title: "Streaming and Progressive Hydration", duration: "20 mins", completed: false }
-        ]
-      },
-      {
-        title: "Module 2: Advanced Routing & Rendering",
-        lessons: [
-          { title: "Parallel and Intercepted Routes", duration: "32 mins", completed: false },
-          { title: "Dynamic Route Handlers & Middleware", duration: "15 mins", completed: false },
-          { title: "On-demand Incremental Static Regeneration (ISR)", duration: "22 mins", completed: false }
-        ]
-      }
-    ]
-  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-indigo-500 selection:text-white pb-16">
@@ -281,6 +353,78 @@ export default function CourseDetailPage() {
               </Tooltip>
             </motion.div>
           )}
+
+          {/* Debug Tools */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                const next = {};
+                course.modules.forEach(mod => {
+                  mod.lessons.forEach(les => {
+                    next[les.title] = true;
+                  });
+                });
+                setCompletedLessons(next);
+                localStorage.setItem(`learnova_completed_lessons_${params.id}`, JSON.stringify(next));
+                toast.success("Debug: All lessons marked complete!");
+              }}
+              className="px-3 py-1.5 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-semibold rounded-xl border border-zinc-800 transition-all cursor-pointer active:scale-95"
+            >
+              🚀 Auto-Complete Course
+            </button>
+            <button
+              onClick={() => {
+                setCompletedLessons({});
+                localStorage.setItem(`learnova_completed_lessons_${params.id}`, JSON.stringify({}));
+                localStorage.removeItem(`learnova_course_completed_date_${params.id}`);
+                setCompletionDate("");
+                toast.success("Debug: Course progress reset!");
+              }}
+              className="px-3 py-1.5 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs font-semibold rounded-xl border border-zinc-800 transition-all cursor-pointer active:scale-95"
+            >
+              🔄 Reset Progress
+            </button>
+          </div>
+
+          {/* Progress Bar & Certificate Claim */}
+          <div className="mb-8 p-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-zinc-300">Course Progress</span>
+              <span className="text-sm font-bold text-indigo-400">{completionPercentage}%</span>
+            </div>
+            <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-indigo-500 h-full rounded-full transition-all duration-500 ease-out" 
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
+            
+            {/* If 100% complete, show certificate banner */}
+            {completionPercentage === 100 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-indigo-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
+                    <Award className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-amber-300">Certificate Unlocked!</h4>
+                    <p className="text-xs text-zinc-400">You have completed all curriculum requirements for this course.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCertificateModal(true)}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Award className="w-4 h-4" />
+                  Claim Certificate
+                </button>
+              </motion.div>
+            )}
+          </div>
 
           {/* 2. Outer Layout Splitter Wrapper */}
           <div className={`flex flex-col ${isPodActive ? "lg:flex-row gap-6 items-start" : "w-full"}`}>
@@ -473,16 +617,28 @@ export default function CourseDetailPage() {
                         onClick={() => {
                           saveProgress(lesson, mod.title);
                           toast.success(`Viewing: ${lesson.title}`);
+                          if (!completedLessons[lesson.title]) {
+                            toggleLesson(lesson.title);
+                          }
                         }}
                         className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-zinc-900/30 transition-colors duration-150 cursor-pointer group/lesson"
                       >
                         <div className="flex items-center gap-3">
-                          {lesson.completed ? (
-                            <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                          ) : (
-                            <PlayCircle className="w-5 h-5 text-zinc-500 shrink-0" />
-                          )}
-                          <span className={`text-sm transition-colors ${lesson.completed ? "text-zinc-400 line-through" : "text-zinc-300 group-hover/lesson:text-indigo-400"}`}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLesson(lesson.title);
+                            }}
+                            className="focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-full cursor-pointer"
+                          >
+                            {completedLessons[lesson.title] ? (
+                              <CheckCircle className="w-5 h-5 text-green-500 hover:text-green-400 transition-colors shrink-0" />
+                            ) : (
+                              <PlayCircle className="w-5 h-5 text-zinc-500 hover:text-zinc-400 transition-colors shrink-0" />
+                            )}
+                          </button>
+                          <span className={`text-sm transition-colors ${completedLessons[lesson.title] ? "text-zinc-400 line-through" : "text-zinc-300 group-hover/lesson:text-indigo-400"}`}>
                             {lesson.title}
                           </span>
                         </div>
@@ -593,6 +749,146 @@ export default function CourseDetailPage() {
                     disabled={submitting}
                     className="px-4 py-2 rounded-xl bg-indigo-600 text-white"
                   >Create</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Certificate Modal */}
+          {showCertificateModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-fade-in">
+              <div className="relative w-full max-w-4xl bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl p-6 sm:p-8">
+                <button
+                  onClick={() => setShowCertificateModal(false)}
+                  className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-100 bg-zinc-800/50 hover:bg-zinc-800 rounded-full transition-colors cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Award className="text-amber-500 w-6 h-6" />
+                  Your Course Certificate
+                </h3>
+
+                {/* Certificate Preview Box */}
+                <div className="w-full aspect-[1.414/1] bg-slate-50 text-zinc-900 p-8 rounded-2xl shadow-inner border border-zinc-700 relative overflow-hidden flex flex-col justify-between select-none animate-scale-in">
+                  {/* Gold borders */}
+                  <div className="absolute inset-2 border-2 border-amber-500/60 pointer-events-none" />
+                  <div className="absolute inset-3 border border-indigo-500/20 pointer-events-none" />
+                  
+                  {/* Corner flourishes */}
+                  <div className="absolute top-2 left-2 w-4 h-4 bg-amber-500" style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }} />
+                  <div className="absolute top-2 right-2 w-4 h-4 bg-amber-500" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }} />
+                  <div className="absolute bottom-2 left-2 w-4 h-4 bg-amber-500" style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%)' }} />
+                  <div className="absolute bottom-2 right-2 w-4 h-4 bg-amber-500" style={{ clipPath: 'polygon(100% 0, 0 100%, 100% 100%)' }} />
+
+                  {/* Branding */}
+                  <div className="text-center pt-2">
+                    <span className="text-[10px] font-black tracking-[0.3em] text-indigo-600 block">LEARNOVA ACADEMY</span>
+                    <div className="w-12 h-0.5 bg-zinc-200 mx-auto mt-1" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="text-center my-auto space-y-4">
+                    <p className="text-xs italic text-zinc-500 font-serif">This certificate is proudly presented to</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold font-serif text-zinc-900 border-b border-amber-500/40 pb-1 max-w-md mx-auto leading-tight">
+                      {user?.displayName || user?.email?.split("@")[0] || "Learnova Student"}
+                    </h2>
+                    <p className="text-xs italic text-zinc-500 font-serif">for successfully completing the advanced curriculum and requirements of</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-indigo-700 tracking-wide">
+                      {course.title}
+                    </h3>
+                    <p className="text-[11px] text-zinc-600">
+                      Completed on <span className="font-semibold">{completionDate || new Date().toLocaleDateString()}</span>
+                    </p>
+                  </div>
+
+                  {/* Footer row */}
+                  <div className="flex items-end justify-between px-4 pb-2">
+                    {/* Left signature */}
+                    <div className="text-center w-24">
+                      <div className="font-serif italic text-xs text-indigo-600 h-6 flex items-center justify-center">
+                        Elena Rostova
+                      </div>
+                      <div className="w-full h-px bg-zinc-300 my-0.5" />
+                      <span className="text-[8px] font-bold text-zinc-400 block uppercase">Instructor</span>
+                    </div>
+
+                    {/* Central emblem */}
+                    <div className="relative flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500 flex items-center justify-center text-amber-500 font-serif text-xs font-bold shadow-sm">
+                        ★
+                      </div>
+                      <span className="text-[7px] font-bold text-amber-600 uppercase tracking-widest mt-1">Validated</span>
+                    </div>
+
+                    {/* Right signature */}
+                    <div className="text-center w-24">
+                      <div className="font-serif italic text-xs text-indigo-600 h-6 flex items-center justify-center">
+                        Prem Shaw
+                      </div>
+                      <div className="w-full h-px bg-zinc-300 my-0.5" />
+                      <span className="text-[8px] font-bold text-zinc-400 block uppercase">Director</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions bar */}
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const cleanTitle = course.title.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
+                        const mockUrl = `${window.location.origin}/verify/certificate/LN-${cleanTitle}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                        navigator.clipboard.writeText(mockUrl);
+                        toast.success("Certificate link copied to clipboard!");
+                      }}
+                      className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-xl border border-zinc-700 transition cursor-pointer"
+                    >
+                      🔗 Copy Share Link
+                    </button>
+                    <button
+                      onClick={() => {
+                        const text = encodeURIComponent(`I've just successfully completed "${course.title}" on Learnova! 🎓🚀`);
+                        window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank");
+                        toast.success("Redirecting to X (Twitter)...");
+                      }}
+                      className="px-4 py-2.5 bg-[#1DA1F2] hover:bg-[#1a91da] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Share on X
+                    </button>
+                    <button
+                      onClick={() => {
+                        window.open(`https://www.linkedin.com/sharing/share-offsite/`, "_blank");
+                        toast.success("Redirecting to LinkedIn...");
+                      }}
+                      className="px-4 py-2.5 bg-[#0A66C2] hover:bg-[#0956a2] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      Post to LinkedIn
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      try {
+                        generateCertificatePDF({
+                          studentName: user?.displayName || user?.email?.split("@")[0] || "Learnova Student",
+                          courseTitle: course.title,
+                          completionDate: completionDate || new Date().toLocaleDateString(),
+                          instructorName: course.instructor || "Learnova Faculty"
+                        });
+                        toast.success("Certificate PDF downloaded!");
+                      } catch (e) {
+                        console.error("PDF generation failed:", e);
+                        toast.error("Could not generate PDF. Please try again.");
+                      }
+                    }}
+                    className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/20 transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Award className="w-5 h-5" />
+                    Download PDF
+                  </button>
                 </div>
               </div>
             </div>

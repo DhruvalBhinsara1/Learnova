@@ -6,9 +6,9 @@ import { requireAuth } from "@/lib/rbac";
 import { checkRateLimit } from "@/lib/rateLimit";
 import {
   extractImageFileFromFormData,
-  uploadAvatarToBlob,
   updateUserImageInDb,
 } from "@/lib/images/imagesService";
+import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
 
 export const dynamic = "force-dynamic";
 
@@ -38,21 +38,18 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError("File size exceeds 5MB limit");
   }
 
-  const { blobUrl } = await uploadAvatarToBlob({
-    file,
-    uid: decodedToken.uid,
-  });
+  const { url } = await processAndUploadFile(file, `avatars/${decodedToken.uid}`);
 
   try {
     await updateUserImageInDb({
       firebaseUid: decodedToken.uid,
-      imageUrl: blobUrl,
+      imageUrl: url,
       faceDescriptor: null,
     });
   } catch (error) {
-    await del(blobUrl).catch(() => {});
+    await activeStorage.delete(url).catch(() => {});
     throw error;
   }
 
-  return jsonSuccess({ url: blobUrl }, 200);
+  return jsonSuccess({ url }, 200);
 });

@@ -7,15 +7,30 @@ import { getFirestore } from "firebase-admin/firestore";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Accepted studentId pattern: Firebase UIDs are 28-character alphanumeric strings.
+// Reject values that do not conform to prevent path manipulation and enumeration.
+const STUDENT_ID_RE = /^[A-Za-z0-9]{10,128}$/;
+
 export const GET = withErrorHandler(async (request, context) => {
   const { payload: decodedToken } = await requireParent(request);
   const parentId = decodedToken.uid;
   const { studentId } = context.params;
 
+  // Validate studentId format before issuing any database query.
+  // Accepting arbitrary strings allows a caller to enumerate IDs by
+  // making repeated requests with different values and observing the
+  // 403 vs 200 response difference. Rejecting malformed IDs early also
+  // prevents special characters from being used in Firestore document paths.
+  if (!studentId || !STUDENT_ID_RE.test(studentId)) {
+    return jsonError("Invalid student ID format.", 400);
+  }
+
   initFirebaseAdmin();
   const db = getFirestore();
 
-  // 1. Verify parent-student linking relationship
+  // 1. Verify parent-student linking relationship.
+  // parentId is derived from the authenticated Firebase token, not from
+  // the request body, so it cannot be spoofed by the caller.
   const linkId = `${parentId}_${studentId}`;
   const linkDoc = await db.collection("parent_student_links").doc(linkId).get();
   if (!linkDoc.exists) {

@@ -66,6 +66,16 @@ export const PUT = withErrorHandler(async (request) => {
       throw new NotFoundError("Exception not found");
     }
 
+    // Tenant isolation check
+    const userInstituteId = profile?.instituteId || (profile?.role === "institute" ? profile?.uid : null);
+    if (userInstituteId) {
+      if (exception.instituteId !== userInstituteId) {
+        throw new ForbiddenError("Forbidden: You are not authorized to access records from another institute.");
+      }
+    } else if (profile?.role !== "admin") {
+      throw new ForbiddenError("Forbidden: User profile missing institute affiliation.");
+    }
+
     // Perform teacher-specific assignment validation (CWE-639 resolution)
     if (profile.role === "teacher") {
       const teacherSubjects = profile.subjects || [];
@@ -107,8 +117,13 @@ export const PUT = withErrorHandler(async (request) => {
         updateFields.comments = comments;
       }
 
+      const updateQuery = { _id: new ObjectId(exceptionId) };
+      if (userInstituteId) {
+        updateQuery.instituteId = userInstituteId;
+      }
+
       result = await db.collection("exceptions").updateOne(
-        { _id: new ObjectId(exceptionId) },
+        updateQuery,
         {
           $set: updateFields,
         }
@@ -127,6 +142,7 @@ export const PUT = withErrorHandler(async (request) => {
     exceptionId: new ObjectId(exceptionId),
     action: status,
     module: "exceptions",
+    instituteId: userInstituteId || null,
   });
 
   return NextResponse.json({ message: "Exception updated successfully" });

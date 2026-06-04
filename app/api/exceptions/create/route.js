@@ -2,7 +2,7 @@ import { connectDb } from "@/lib/mongodb";
 import { requireStudent } from "@/lib/rbac";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { jsonSuccess } from "@/lib/api-response";
-import { ValidationError, AppError } from "@/lib/errors";
+import { ValidationError, AppError, ForbiddenError } from "@/lib/errors";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { z } from "zod";
 
@@ -41,12 +41,18 @@ const exceptionCreateSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireStudent(request);
+  const { payload: decodedToken, profile } = await requireStudent(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimitResult = await checkRateLimit(`exceptions_create_${ip}_${decodedToken.uid}`);
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
+
+  if (!profile || !profile.instituteId) {
+    throw new ForbiddenError("Forbidden: User profile missing institute affiliation.");
+  }
+  const userInstituteId = profile.instituteId;
+
   const body = await parseJSON(request, 1024 * 10);
   
   const validation = exceptionCreateSchema.safeParse(body);
@@ -64,6 +70,7 @@ export const POST = withErrorHandler(async (request) => {
       details,
       date,
       studentEmail: decodedToken.email,
+      instituteId: userInstituteId,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -214,14 +214,11 @@ export default function Footer() {
                   {link.label}
                 </FooterLink>
               ))}
-            </ul>
           </div>
 
-          {/* Contact */}
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
-              Contact
-            </h3>
+          {/* Contact Column with Integrated Modern Campus Card */}
+          <div className="space-y-6">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-white/90">Contact</h3>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-slate-300 space-y-2">
               <p>
                 Email:{" "}

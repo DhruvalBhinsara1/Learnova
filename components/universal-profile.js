@@ -44,6 +44,7 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMounted } from "@/hooks/useIsMounted";
+import useUnsavedChangesWarning from "@/hooks/useUnsavedChangesWarning";
 import { Navbar } from "./Navbar";
 import ActivityHeatmap from "@/components/activity/ActivityHeatmap";
 import { apiFetch } from "@/lib/apiClient";
@@ -56,8 +57,11 @@ export default function UniversalProfile() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isProfileDirty, setIsProfileDirty] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const isMounted = useIsMounted();
+
+  useUnsavedChangesWarning(isEditing && isProfileDirty);
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [imageError, setImageError] = useState(false);
@@ -193,6 +197,7 @@ export default function UniversalProfile() {
   }, [user]);
 
   const handleInputChange = (e) => {
+    setIsProfileDirty(true);
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
@@ -261,6 +266,7 @@ export default function UniversalProfile() {
         );
 
         setIsEditing(false);
+        setIsProfileDirty(false);
       }
     } catch (error) {
       toast.error(
@@ -694,9 +700,10 @@ export default function UniversalProfile() {
 
                       <Button
                         variant="outline"
-                        onClick={() =>
-                          setIsEditing(false)
-                        }
+                        onClick={() => {
+                          setIsEditing(false);
+                          setIsProfileDirty(false);
+                        }}
                       >
                         <X className="w-4 h-4 mr-2" />
                         Cancel

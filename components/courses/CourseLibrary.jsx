@@ -53,7 +53,32 @@ export default function CourseLibrary({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [savedCourseIds, setSavedCourseIds] = useState([]);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [courseProgress, setCourseProgress] = useState({});
   const isMounted = useIsMounted();
+
+  // Load course completion progress from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const progressMap = {};
+    allCourses.forEach(course => {
+      const savedCompleted = localStorage.getItem(`learnova_completed_lessons_${course.id}`);
+      if (savedCompleted) {
+        try {
+          const completed = JSON.parse(savedCompleted);
+          const match = course.duration.match(/(\d+)\s+lessons?/);
+          const totalLessons = match ? parseInt(match[1], 10) : 0;
+          if (totalLessons > 0) {
+            const completedCount = Object.values(completed).filter(Boolean).length;
+            const pct = Math.round((completedCount / totalLessons) * 100);
+            progressMap[course.id] = Math.min(100, pct);
+          }
+        } catch (e) {
+          console.error("Failed to parse progress for course:", course.id, e);
+        }
+      }
+    });
+    setCourseProgress(progressMap);
+  }, [allCourses]);
 
   // Sync state if initial courses change (e.g. search filter or category chip select re-fetches from server)
   useEffect(() => {
@@ -247,6 +272,24 @@ export default function CourseLibrary({
                       <p className="text-sm text-slate-400 line-clamp-2 text-ellipsis overflow-hidden leading-relaxed">
                         {course.description}
                       </p>
+                      
+                      {/* Course Progress */}
+                      {courseProgress[course.id] !== undefined && (
+                        <div className="pt-2">
+                          <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-1.5">
+                            <span>Progress</span>
+                            <span className={courseProgress[course.id] === 100 ? "text-amber-400 font-bold" : "text-indigo-400 font-bold"}>
+                              {courseProgress[course.id]}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-300 ${courseProgress[course.id] === 100 ? "bg-amber-500" : "bg-indigo-500"}`}
+                              style={{ width: `${courseProgress[course.id]}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Card Bottom Section */}
