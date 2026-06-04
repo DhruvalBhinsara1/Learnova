@@ -1,11 +1,15 @@
 "use client";
 
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState, useEffect, useRef, useContext } from "react";
+import { rtdb, isMockAuthMode, MOCK_USER } from "@/lib/firebaseConfig";
+import { ref, onValue, off, push, serverTimestamp } from "firebase/database";
+import { AuthContext } from "@/contexts/AuthContext";
 
 export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
+  const { user } = useContext(AuthContext);
   // Keep timers so we can clear on unmount
   const timersRef = useRef(new Map());
 
@@ -16,21 +20,61 @@ export function NotificationProvider({ children }) {
 
     const newNotification = {
       id,
+      read: false,
+      timestamp: Date.now(),
       ...notification,
     };
 
-    setNotifications((prev) => [...prev, newNotification]);
+    setNotifications((prev) => {
+      // Avoid duplicates
+      if (prev.some(n => n.id === id)) return prev;
+      return [...prev, newNotification];
+    });
 
-    // Auto-remove notification after 5s. Track timer so it can be cleared
-    // if the provider unmounts or the notification is removed early.
+    // Auto-remove notification after 8s for real-time alerts
     const timerId = setTimeout(() => {
       removeNotification(id);
-      // clean up timer map entry
       timersRef.current.delete(id);
-    }, 5000);
+    }, 8000);
 
     timersRef.current.set(id, timerId);
   };
+
+  // Real-time synchronization
+  useEffect(() => {
+    if (isMockAuthMode) {
+      // Simulate real-time events in mock mode
+      const interval = setInterval(() => {
+        const mockEvents = [
+          { message: "New Quiz Result: You scored 95% in Next.js Advanced!", type: "success" },
+          { message: "New Assignment: 'React Server Components' is now available.", type: "info" },
+          { message: "Deadline approaching: 'Tailword CSS' assignment due in 2 hours.", type: "warning" },
+        ];
+        const randomEvent = mockEvents[Math.floor(Math.random() * mockEvents.length)];
+        addNotification(randomEvent);
+      }, 30000); // Every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+
+    if (!rtdb || !user?.uid) return;
+
+    const notifRef = ref(rtdb, `notifications/${user.uid}`);
+    const unsubscribe = onValue(notifRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Data is an object of notifications indexed by push ID
+        Object.entries(data).forEach(([key, value]) => {
+          addNotification({
+            id: key,
+            ...value,
+          });
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const removeNotification = (id) => {
     setNotifications((prev) =>
