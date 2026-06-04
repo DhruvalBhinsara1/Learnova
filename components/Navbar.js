@@ -345,6 +345,7 @@ export function Navbar() {
             {/* Logo */}
             <Link
               href="/"
+              onClick={() => setIsMenuOpen(false)}
               className="flex items-center space-x-3 group shrink-0"
             >
               <motion.div
