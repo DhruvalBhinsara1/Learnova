@@ -302,7 +302,7 @@ setEmailSuggestion(null);
                     value={name}
                     onChange={(e) => setName(e.target.value.trimStart())}
                     required
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400"
                   />
                 </div>
 
@@ -319,7 +319,7 @@ setEmailSuggestion(null);
                     value={rollNo}
                     onChange={(e) => setRollNo(e.target.value)}
                     required
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400"
                   />
                 </div>
 
@@ -350,7 +350,7 @@ setEmailSuggestion(null);
                     accept="image/*"
                     onChange={(e) => setPhoto(e.target.files?.[0] || null)}
                     required
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-500 file:to-violet-600 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:from-indigo-600 hover:file:to-violet-700"
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 file:mr-4 file:rounded-lg file:border-0 file:bg-gradient-to-r file:from-indigo-500 file:to-violet-600 file:px-4 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:from-indigo-600 hover:file:to-violet-700"
                   />
                 </div>
 

@@ -4,7 +4,7 @@ import React from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 const fieldBaseClasses =
-  "w-full py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground";
+  "w-full py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 transition-all duration-200 bg-background text-foreground placeholder-muted-foreground";
 
 const FieldShell = ({
   label,

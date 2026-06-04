@@ -124,7 +124,7 @@ export default function ForgotPasswordModal({
                   setEmail(e.target.value);
                   setLocalError("");
                 }}
-                className={`w-full rounded-xl border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 dark:focus:ring-indigo-400/30 dark:focus:border-indigo-400 ${
+                className={`w-full rounded-xl border bg-background py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:focus:ring-blue-400 ${
                   displayError
                     ? "border-destructive focus:ring-destructive/30 focus:border-destructive"
                     : "border-border"
