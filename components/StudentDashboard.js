@@ -385,7 +385,7 @@ const StudentDashboard = () => {
             <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase ${
               skillPath === 'advanced' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
               skillPath === 'booster' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-              'bg-blue-500/20 text-blue-400 border border-white/10'
+              'bg-blue-500/20 text-blue-400 border border-white/10'f
             }`}>
               {skillPath} Sequence Active
             </span>

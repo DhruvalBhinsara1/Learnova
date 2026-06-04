@@ -38,6 +38,9 @@ const SmartNoticeBoard = () => {
   const [searchQuery, setSearchQuery] =
     useState("");
 
+  const [debouncedQuery, setDebouncedQuery] =
+  useState("");
+
   const [selectedCategory, setSelectedCategory] =
     useState("all");
 
@@ -299,7 +302,7 @@ const SmartNoticeBoard = () => {
 
   // Filter notices
   const filteredNotices = useMemo(() => {
-    const queryText = searchQuery
+    const queryText = debouncedQuery
       .trim()
       .toLowerCase();
 
@@ -407,7 +410,7 @@ const SmartNoticeBoard = () => {
       });
   }, [
     notices,
-    searchQuery,
+    debouncedQuery,
     selectedCategory,
     selectedPriority,
     selectedTags,
