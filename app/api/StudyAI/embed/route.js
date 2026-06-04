@@ -1,9 +1,6 @@
 import { randomUUID } from "crypto";
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import {
-  parseJSON,
-  withErrorHandler,
-} from "@/lib/error-handler";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 import { connectDb } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";

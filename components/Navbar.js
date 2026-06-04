@@ -253,7 +253,7 @@ export function Navbar() {
     { href: "/activity", label: "Activities", icon: Activity },
     { href: "/complaints", label: "Complaints", icon: MessageSquareWarning },
     { href: "/contact", label: "Contact", icon: Mail },
-    {href:"/StudyAI",label:"Study",icon:BrainCircuit}
+    { href: "/StudyAI", label: "Study", icon: BrainCircuit },
   ];
 
   const userMenuItems = [

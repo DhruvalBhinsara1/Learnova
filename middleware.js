@@ -155,7 +155,9 @@ async function verifyIdToken(token) {
       try {
         const headerParts = token.split(".");
         if (headerParts.length >= 1) {
-          let headerPayload = headerParts[0].replace(/-/g, "+").replace(/_/g, "/");
+          let headerPayload = headerParts[0]
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
           while (headerPayload.length % 4) headerPayload += "=";
           const headerJson =
             typeof atob === "function"
@@ -283,16 +285,42 @@ export async function middleware(request) {
   }
 
   const protectedDashboards = [
-    { prefix: "/student", apiPrefix: "/api/student", role: "student", defaultPath: "/student/dashboard" },
-    { prefix: "/teacher", apiPrefix: "/api/teacher", role: "teacher", defaultPath: "/teacher/dashboard" },
-    { prefix: "/admin", apiPrefix: "/api/admin", role: "admin", defaultPath: "/admin/dashboard" },
-    { prefix: "/institute", apiPrefix: "/api/institute", role: "institute", defaultPath: "/institute/dashboard" },
-    { prefix: "/parent", apiPrefix: "/api/parent", role: "parent", defaultPath: "/parent/dashboard" },
+    {
+      prefix: "/student",
+      apiPrefix: "/api/student",
+      role: "student",
+      defaultPath: "/student/dashboard",
+    },
+    {
+      prefix: "/teacher",
+      apiPrefix: "/api/teacher",
+      role: "teacher",
+      defaultPath: "/teacher/dashboard",
+    },
+    {
+      prefix: "/admin",
+      apiPrefix: "/api/admin",
+      role: "admin",
+      defaultPath: "/admin/dashboard",
+    },
+    {
+      prefix: "/institute",
+      apiPrefix: "/api/institute",
+      role: "institute",
+      defaultPath: "/institute/dashboard",
+    },
+    {
+      prefix: "/parent",
+      apiPrefix: "/api/parent",
+      role: "parent",
+      defaultPath: "/parent/dashboard",
+    },
   ];
 
-  const matchedDashboard = protectedDashboards.find((dashboard) =>
-    pathname.startsWith(dashboard.prefix) ||
-    (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
+  const matchedDashboard = protectedDashboards.find(
+    (dashboard) =>
+      pathname.startsWith(dashboard.prefix) ||
+      (dashboard.apiPrefix && pathname.startsWith(dashboard.apiPrefix))
   );
 
   if (
@@ -305,7 +333,10 @@ export async function middleware(request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       if (!isEmailVerified) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Email not verified" },
+          { status: 403 }
+        );
       }
     }
   }
@@ -319,16 +350,26 @@ export async function middleware(request) {
     }
     if (!isEmailVerified) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Email not verified" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Email not verified" },
+          { status: 403 }
+        );
       }
       return NextResponse.redirect(new URL("/verify", request.url));
     }
     if (userRole !== matchedDashboard.role) {
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Forbidden: Role mismatch" }, { status: 403 });
+        return NextResponse.json(
+          { error: "Forbidden: Role mismatch" },
+          { status: 403 }
+        );
       }
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
@@ -352,16 +393,24 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL("/auth", request.url));
     }
     if (isEmailVerified) {
-      const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
-      const redirectTarget = correctDashboard ? correctDashboard.defaultPath : "/profile";
+      const correctDashboard = protectedDashboards.find(
+        (d) => d.role === userRole
+      );
+      const redirectTarget = correctDashboard
+        ? correctDashboard.defaultPath
+        : "/profile";
       return NextResponse.redirect(new URL(redirectTarget, request.url));
     }
   }
 
   if (pathname === "/auth" && isTokenValid && isEmailVerified && userRole) {
-    const correctDashboard = protectedDashboards.find((d) => d.role === userRole);
+    const correctDashboard = protectedDashboards.find(
+      (d) => d.role === userRole
+    );
     if (correctDashboard) {
-      return NextResponse.redirect(new URL(correctDashboard.defaultPath, request.url));
+      return NextResponse.redirect(
+        new URL(correctDashboard.defaultPath, request.url)
+      );
     }
   }
 
@@ -377,7 +426,10 @@ export async function middleware(request) {
     response.headers.set("X-Frame-Options", "SAMEORIGIN");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    response.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
+    response.headers.set(
+      "Permissions-Policy",
+      "camera=(self), microphone=(), geolocation=()"
+    );
     response.headers.set("X-XSS-Protection", "1; mode=block");
   }
 

@@ -15,7 +15,10 @@ import {
   updateUserImageInDb,
   validateFaceDescriptor,
 } from "@/lib/images/imagesService";
-import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
+import {
+  processAndUploadFile,
+  activeStorage,
+} from "@/lib/services/uploadService";
 
 export const dynamic = "force-dynamic";
 
@@ -30,19 +33,21 @@ export const GET = withErrorHandler(async (request) => {
   }
 
   const decodedToken = await requireAuth(request);
-  const profile = await getUserProfile(decodedToken.uid) || { role: "student" };
+  const profile = (await getUserProfile(decodedToken.uid)) || {
+    role: "student",
+  };
 
-  const imageUrl = await getUserImageFromDb({ 
-    id, 
+  const imageUrl = await getUserImageFromDb({
+    id,
     callerUid: decodedToken.uid,
     callerRole: profile.role,
-    callerInstituteId: profile.instituteId
+    callerInstituteId: profile.instituteId,
   });
 
   logger.info("Image accessed", {
     userId: decodedToken.uid,
     targetId: id,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   const { imageBuffer, contentType } = await fetchAndValidateImage(imageUrl);
@@ -56,7 +61,9 @@ export const GET = withErrorHandler(async (request) => {
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`images_post_${ip}_${decodedToken.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `images_post_${ip}_${decodedToken.uid}`
+  );
   if (!rateLimitResult.allowed) {
     throw new AppError("Too many attempts. Please try again later.", 429);
   }
@@ -69,7 +76,10 @@ export const POST = withErrorHandler(async (request) => {
   const file = extractImageFileFromFormData(formData);
 
   // Upload new avatar using the secure service
-  const { url } = await processAndUploadFile(file, `images/${decodedToken.uid}`);
+  const { url } = await processAndUploadFile(
+    file,
+    `images/${decodedToken.uid}`
+  );
 
   try {
     // Atomically update user image and handle face descriptor (unset if not provided)

@@ -13,7 +13,10 @@ export const POST = withErrorHandler(async (request) => {
   const { targetUserId } = body;
 
   if (!targetUserId) {
-    return NextResponse.json({ success: false, error: "Missing targetUserId" }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: "Missing targetUserId" },
+      { status: 400 }
+    );
   }
 
   // Terminate all sessions for the user across all devices
@@ -21,6 +24,6 @@ export const POST = withErrorHandler(async (request) => {
 
   return NextResponse.json({
     success: true,
-    message: `All active sessions for user ${targetUserId} have been terminated.`
+    message: `All active sessions for user ${targetUserId} have been terminated.`,
   });
 });

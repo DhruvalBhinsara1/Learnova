@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
  * Generates a professional, high-fidelity PDF certificate for course completion.
  * Renders in landscape orientation with elegant borders, branding, typography,
  * custom vector signatures, and a gold seal.
- * 
+ *
  * @param {Object} params
  * @param {string} params.studentName - Name of the student
  * @param {string} params.courseTitle - Title of the course completed
@@ -16,7 +16,7 @@ export const generateCertificatePDF = ({
   studentName = "Learnova Student",
   courseTitle = "Advanced Course",
   completionDate = new Date().toLocaleDateString(),
-  instructorName = "Learnova Faculty"
+  instructorName = "Learnova Faculty",
 }) => {
   const doc = new jsPDF({
     orientation: "landscape",
@@ -47,13 +47,23 @@ export const generateCertificatePDF = ({
   // Bottom-left
   doc.triangle(12, height - 12, 22, height - 12, 12, height - 22, "FD");
   // Bottom-right
-  doc.triangle(width - 12, height - 12, width - 22, height - 12, width - 12, height - 22, "FD");
+  doc.triangle(
+    width - 12,
+    height - 12,
+    width - 22,
+    height - 12,
+    width - 12,
+    height - 22,
+    "FD"
+  );
 
   // 2. Header Branding
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(99, 102, 241); // Indigo
-  doc.text("L E A R N O V A   A C A D E M Y", width / 2, 30, { align: "center" });
+  doc.text("L E A R N O V A   A C A D E M Y", width / 2, 30, {
+    align: "center",
+  });
 
   // Elegant Divider Line
   doc.setDrawColor(228, 228, 231); // Gray-200
@@ -64,7 +74,9 @@ export const generateCertificatePDF = ({
   doc.setFont("times", "italic");
   doc.setFontSize(14);
   doc.setTextColor(113, 113, 122); // Zinc-500
-  doc.text("This certificate is proudly presented to", width / 2, 52, { align: "center" });
+  doc.text("This certificate is proudly presented to", width / 2, 52, {
+    align: "center",
+  });
 
   // 4. Student Name
   doc.setFont("times", "bold");
@@ -81,7 +93,12 @@ export const generateCertificatePDF = ({
   doc.setFont("times", "italic");
   doc.setFontSize(13);
   doc.setTextColor(113, 113, 122); // Zinc-500
-  doc.text("for successfully completing the advanced curriculum and requirements of", width / 2, 88, { align: "center" });
+  doc.text(
+    "for successfully completing the advanced curriculum and requirements of",
+    width / 2,
+    88,
+    { align: "center" }
+  );
 
   // 6. Course Title
   doc.setFont("helvetica", "bold");
@@ -93,13 +110,18 @@ export const generateCertificatePDF = ({
   doc.setFont("times", "normal");
   doc.setFontSize(12);
   doc.setTextColor(82, 82, 91); // Zinc-600
-  doc.text(`Completed on ${completionDate}`, width / 2, 120, { align: "center" });
+  doc.text(`Completed on ${completionDate}`, width / 2, 120, {
+    align: "center",
+  });
 
   // 8. Unique Certificate Hash
-  const cleanTitle = courseTitle.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase();
+  const cleanTitle = courseTitle
+    .replace(/[^a-zA-Z]/g, "")
+    .substring(0, 3)
+    .toUpperCase();
   const randomHash = Math.random().toString(36).substring(2, 8).toUpperCase();
   const hash = `LN-${cleanTitle}-${randomHash}`;
-  
+
   doc.setFont("courier", "normal");
   doc.setFontSize(9);
   doc.setTextColor(161, 161, 170); // Zinc-400
@@ -107,7 +129,7 @@ export const generateCertificatePDF = ({
 
   // 9. Signatures Block
   const sigY = 165;
-  
+
   // Left: Instructor
   doc.setFont("times", "normal");
   doc.setFontSize(10);
@@ -147,48 +169,66 @@ export const generateCertificatePDF = ({
   doc.setDrawColor(79, 70, 229); // Blue/Indigo ink
   doc.setLineWidth(0.75);
   doc.moveTo(width - 80, sigY - 6);
-  doc.bezierCurveTo(width - 74, sigY - 12, width - 68, sigY - 1, width - 62, sigY - 8);
-  doc.bezierCurveTo(width - 56, sigY - 15, width - 50, sigY - 3, width - 44, sigY - 10);
-  doc.bezierCurveTo(width - 40, sigY - 12, width - 38, sigY - 7, width - 36, sigY - 9);
+  doc.bezierCurveTo(
+    width - 74,
+    sigY - 12,
+    width - 68,
+    sigY - 1,
+    width - 62,
+    sigY - 8
+  );
+  doc.bezierCurveTo(
+    width - 56,
+    sigY - 15,
+    width - 50,
+    sigY - 3,
+    width - 44,
+    sigY - 10
+  );
+  doc.bezierCurveTo(
+    width - 40,
+    sigY - 12,
+    width - 38,
+    sigY - 7,
+    width - 36,
+    sigY - 9
+  );
   doc.stroke();
 
   // 10. Golden Seal / Badge (Bottom Center)
   const sealX = width / 2;
   const sealY = 162;
-  
+
   // Starburst points (outer rays of seal)
   doc.setFillColor(212, 175, 55); // Gold
   doc.setDrawColor(197, 160, 89);
   doc.setLineWidth(0.2);
-  
+
   const numPoints = 16;
   const outerRadius = 14;
   const innerRadius = 11;
   const points = [];
-  
+
   for (let i = 0; i < numPoints * 2; i++) {
     const angle = (i * Math.PI) / numPoints;
     const r = i % 2 === 0 ? outerRadius : innerRadius;
-    points.push([
-      sealX + Math.cos(angle) * r,
-      sealY + Math.sin(angle) * r
-    ]);
+    points.push([sealX + Math.cos(angle) * r, sealY + Math.sin(angle) * r]);
   }
-  
+
   // Draw starburst polygon
   doc.polygon(points, "FD");
 
   // Inner circle
   doc.setFillColor(255, 255, 255);
   doc.circle(sealX, sealY, 9, "F");
-  
+
   // Seal text / detail
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6);
   doc.setTextColor(212, 175, 55);
   doc.text("L E A R N O V A", sealX, sealY - 1.5, { align: "center" });
   doc.text("APPROVED", sealX, sealY + 1.5, { align: "center" });
-  
+
   // Little gold star in seal
   doc.setFont("times", "normal");
   doc.setFontSize(8);
@@ -197,6 +237,6 @@ export const generateCertificatePDF = ({
   // Save the PDF
   const filename = `certificate-${courseTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.pdf`;
   doc.save(filename);
-  
+
   return filename;
 };

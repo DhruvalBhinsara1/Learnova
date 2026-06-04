@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { exportRiskToCSV } from '../utils/exportToCSV';
+import React, { useState } from "react";
+import { exportRiskToCSV } from "../utils/exportToCSV";
 
 export default function AIAttendanceDashboard({ riskData, tenantId }) {
   const [isExporting, setIsExporting] = useState(false);
@@ -7,7 +7,9 @@ export default function AIAttendanceDashboard({ riskData, tenantId }) {
   const handleExport = () => {
     setIsExporting(true);
     try {
-      const filteredData = riskData.filter(item => item.tenantId === tenantId);
+      const filteredData = riskData.filter(
+        (item) => item.tenantId === tenantId
+      );
       if (filteredData.length === 0) {
         alert("No data available for export.");
         return;
@@ -30,7 +32,7 @@ export default function AIAttendanceDashboard({ riskData, tenantId }) {
         disabled={isExporting || !riskData?.length}
         className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm disabled:bg-gray-400"
       >
-        {isExporting ? 'Exporting...' : '📥 Export Report'}
+        {isExporting ? "Exporting..." : "📥 Export Report"}
       </button>
     </div>
   );

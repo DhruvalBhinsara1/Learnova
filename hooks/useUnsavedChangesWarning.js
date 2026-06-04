@@ -31,7 +31,11 @@ export default function useUnsavedChangesWarning(isDirty) {
     };
 
     history.pushState = function (state, title, url) {
-      if (!suppressNextConfirm && isDirtyRef.current && !window.confirm(MESSAGE)) {
+      if (
+        !suppressNextConfirm &&
+        isDirtyRef.current &&
+        !window.confirm(MESSAGE)
+      ) {
         return;
       }
       suppressNextConfirm = false;
@@ -39,7 +43,11 @@ export default function useUnsavedChangesWarning(isDirty) {
     };
 
     history.replaceState = function (state, title, url) {
-      if (!suppressNextConfirm && isDirtyRef.current && !window.confirm(MESSAGE)) {
+      if (
+        !suppressNextConfirm &&
+        isDirtyRef.current &&
+        !window.confirm(MESSAGE)
+      ) {
         return;
       }
       suppressNextConfirm = false;

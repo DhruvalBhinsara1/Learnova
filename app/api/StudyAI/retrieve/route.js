@@ -1,8 +1,5 @@
 import { jsonSuccess, jsonError } from "@/lib/api-response";
-import {
-  parseJSON,
-  withErrorHandler,
-} from "@/lib/error-handler";
+import { parseJSON, withErrorHandler } from "@/lib/error-handler";
 
 import { connectDb } from "@/lib/mongodb";
 
@@ -47,23 +44,18 @@ export const POST = withErrorHandler(async (request) => {
     return jsonError("Session expired", 404);
   }
 
+  try {
+    const vectorStore = await MemoryVectorStore.fromDocuments(
+      session.chunks,
+      getEmbeddings()
+    );
 
- try {
-  const vectorStore = await MemoryVectorStore.fromDocuments(
-    session.chunks,
-    getEmbeddings()
-  );
+    const docs = await vectorStore.similaritySearch(query, 4);
 
-  const docs = await vectorStore.similaritySearch(query, 4);
+    return jsonSuccess({ docs });
+  } catch (err) {
+    console.error("RETRIEVE ERROR:", err);
 
-  return jsonSuccess({ docs });
-
-} catch (err) {
-  console.error("RETRIEVE ERROR:", err);
-
-  return jsonError(
-    err.message || "Retrieve failed",
-    500
-  );
-}
+    return jsonError(err.message || "Retrieve failed", 500);
+  }
 });

@@ -16,10 +16,7 @@ export async function GET(request) {
   }
 
   if (startDate && endDate && startDate > endDate) {
-    return NextResponse.json(
-      { error: "Invalid date range" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid date range" }, { status: 400 });
   }
 
   return NextResponse.json({ warnings: [] });

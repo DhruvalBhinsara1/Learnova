@@ -41,7 +41,7 @@ export default function NoticeDetailPage({ params: paramsPromise }) {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          
+
           // Verify user has role authorization (targetAudience check) and tenant isolation (instituteId check)
           const targetAudience = data.targetAudience || [];
           const userRole = userProfile?.role || "student";
@@ -52,13 +52,22 @@ export default function NoticeDetailPage({ params: paramsPromise }) {
           const noticeInstituteId = data.instituteId;
 
           if (!isAdmin && !isAuthor) {
-            if (targetAudience.length > 0 && !targetAudience.includes(userRole)) {
+            if (
+              targetAudience.length > 0 &&
+              !targetAudience.includes(userRole)
+            ) {
               setError("You do not have permission to view this notice.");
               setNoticeLoading(false);
               return;
             }
-            if (noticeInstituteId && userInstituteId && noticeInstituteId !== userInstituteId) {
-              setError("Access Denied: Notice belongs to a different institute.");
+            if (
+              noticeInstituteId &&
+              userInstituteId &&
+              noticeInstituteId !== userInstituteId
+            ) {
+              setError(
+                "Access Denied: Notice belongs to a different institute."
+              );
               setNoticeLoading(false);
               return;
             }

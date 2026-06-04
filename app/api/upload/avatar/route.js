@@ -8,12 +8,14 @@ import {
   extractImageFileFromFormData,
   updateUserImageInDb,
 } from "@/lib/images/imagesService";
-import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
+import {
+  processAndUploadFile,
+  activeStorage,
+} from "@/lib/services/uploadService";
 
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
 
 export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
@@ -38,7 +40,10 @@ export const POST = withErrorHandler(async (request) => {
     throw new ValidationError("File size exceeds 5MB limit");
   }
 
-  const { url } = await processAndUploadFile(file, `avatars/${decodedToken.uid}`);
+  const { url } = await processAndUploadFile(
+    file,
+    `avatars/${decodedToken.uid}`
+  );
 
   try {
     await updateUserImageInDb({

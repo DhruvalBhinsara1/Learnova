@@ -60,6 +60,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
 
+      - name: 🔧 Fix Parcel Watcher native binding (Linux CI)
+        run: |
+          PARCEL_VER=$(node -p "require('./node_modules/@parcel/watcher/package.json').version")
+          npm install --legacy-peer-deps --no-save "@parcel/watcher-linux-x64-glibc@${PARCEL_VER}"
+
       - name: 🔨 Build project
         run: npm run build
         env:

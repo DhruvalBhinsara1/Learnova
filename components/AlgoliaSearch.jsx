@@ -1,14 +1,14 @@
 "use client";
 
-import React from 'react';
-import algoliasearch from 'algoliasearch/lite';
-import { InstantSearch, SearchBox, Hits, Highlight } from 'react-instantsearch';
+import React from "react";
+import algoliasearch from "algoliasearch/lite";
+import { InstantSearch, SearchBox, Hits, Highlight } from "react-instantsearch";
 
 const appId = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
 const apiKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
 
 // Create client only if keys are present to avoid noisy network failures
-const searchClient = (appId && apiKey) ? algoliasearch(appId, apiKey) : null;
+const searchClient = appId && apiKey ? algoliasearch(appId, apiKey) : null;
 
 function Hit({ hit }) {
   return (
@@ -38,15 +38,16 @@ export default function AlgoliaSearch() {
         <div className="mb-8">
           <SearchBox
             classNames={{
-              root: 'w-full',
-              input: 'w-full p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900',
-              submitIcon: 'hidden',
-              resetIcon: 'hidden'
+              root: "w-full",
+              input:
+                "w-full p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900",
+              submitIcon: "hidden",
+              resetIcon: "hidden",
             }}
             placeholder="Search courses..."
           />
         </div>
-        <Hits hitComponent={Hit} classNames={{ list: 'flex flex-col gap-4' }} />
+        <Hits hitComponent={Hit} classNames={{ list: "flex flex-col gap-4" }} />
       </InstantSearch>
     </div>
   );

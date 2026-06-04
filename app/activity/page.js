@@ -299,7 +299,7 @@ export default function ActivityPage() {
       icon: Target,
       gradient: "from-cyan-500 to-blue-600",
       type: "quiz",
-    }
+    },
   ];
 
   const normalizedQuery = searchQuery.trim().toLowerCase();

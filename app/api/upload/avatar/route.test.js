@@ -5,7 +5,10 @@ import {
   extractImageFileFromFormData,
   updateUserImageInDb,
 } from "@/lib/images/imagesService";
-import { processAndUploadFile, activeStorage } from "@/lib/services/uploadService";
+import {
+  processAndUploadFile,
+  activeStorage,
+} from "@/lib/services/uploadService";
 import { ValidationError } from "@/lib/errors";
 
 vi.mock("next/server", () => ({
@@ -65,7 +68,9 @@ describe("POST /api/upload/avatar", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.url).toBe("https://public.blob.vercel-storage.com/avatar.jpg");
+    expect(body.data.url).toBe(
+      "https://public.blob.vercel-storage.com/avatar.jpg"
+    );
     expect(processAndUploadFile).toHaveBeenCalledWith(file, "avatars/user-123");
     expect(updateUserImageInDb).toHaveBeenCalledWith({
       firebaseUid: "user-123",
@@ -103,6 +108,8 @@ describe("POST /api/upload/avatar", () => {
     const response = await POST(createRequest());
 
     expect(response.status).toBe(500);
-    expect(activeStorage.delete).toHaveBeenCalledWith("https://public.blob.vercel-storage.com/avatar.jpg");
+    expect(activeStorage.delete).toHaveBeenCalledWith(
+      "https://public.blob.vercel-storage.com/avatar.jpg"
+    );
   });
 });

@@ -45,15 +45,9 @@ describe("AttendanceValidation Core States", () => {
   test("renders loading state while attendance settings are loading", () => {
     mockApiFetch.mockImplementation(() => new Promise(() => {}));
 
-    render(
-      <AttendanceValidation
-        onValidationSuccess={vi.fn()}
-      />
-    );
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
-    expect(
-      screen.getByText(/loading system/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/loading system/i)).toBeInTheDocument();
 
     expect(
       screen.getByText(/preparing attendance validation/i)
@@ -61,19 +55,11 @@ describe("AttendanceValidation Core States", () => {
   });
 
   test("renders error state when settings request fails", async () => {
-    mockApiFetch.mockRejectedValueOnce(
-      new Error("Settings fetch failed")
-    );
+    mockApiFetch.mockRejectedValueOnce(new Error("Settings fetch failed"));
 
-    render(
-      <AttendanceValidation
-        onValidationSuccess={vi.fn()}
-      />
-    );
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
-    expect(
-      await screen.findByText(/system error/i)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/system error/i)).toBeInTheDocument();
 
     expect(
       screen.getByRole("button", {
@@ -106,16 +92,10 @@ describe("AttendanceValidation Core States", () => {
       }),
     });
 
-    render(
-      <AttendanceValidation
-        onValidationSuccess={vi.fn()}
-      />
-    );
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
     });
 
     await user.click(
@@ -124,14 +104,10 @@ describe("AttendanceValidation Core States", () => {
       })
     );
 
-    expect(
-      screen.getByText(/exception request/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/exception request/i)).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        /request attendance validation exception/i
-      )
+      screen.getByText(/request attendance validation exception/i)
     ).toBeInTheDocument();
   });
 
@@ -153,16 +129,10 @@ describe("AttendanceValidation Core States", () => {
       }),
     });
 
-    render(
-      <AttendanceValidation
-        onValidationSuccess={vi.fn()}
-      />
-    );
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
     });
 
     await user.click(
@@ -177,9 +147,7 @@ describe("AttendanceValidation Core States", () => {
       })
     );
 
-    expect(
-      screen.queryByText(/exception request/i)
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/exception request/i)).not.toBeInTheDocument();
   });
 
   test("disables submit button when required fields are empty", async () => {
@@ -200,16 +168,10 @@ describe("AttendanceValidation Core States", () => {
       }),
     });
 
-    render(
-      <AttendanceValidation
-        onValidationSuccess={vi.fn()}
-      />
-    );
+    render(<AttendanceValidation onValidationSuccess={vi.fn()} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/secure attendance/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/secure attendance/i)).toBeInTheDocument();
     });
 
     await user.click(

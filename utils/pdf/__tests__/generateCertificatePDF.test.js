@@ -23,8 +23,8 @@ const mockDoc = {
     pageSize: {
       getWidth: vi.fn(() => 297),
       getHeight: vi.fn(() => 210),
-    }
-  }
+    },
+  },
 };
 
 vi.mock("jspdf", () => {
@@ -43,20 +43,37 @@ describe("generateCertificatePDF Utility", () => {
       studentName: "Jane Doe",
       courseTitle: "React Native Deep Dive",
       completionDate: "June 2, 2026",
-      instructorName: "Sarah Jenkins"
+      instructorName: "Sarah Jenkins",
     });
 
     expect(filename).toBe("certificate-react-native-deep-dive.pdf");
-    expect(mockDoc.save).toHaveBeenCalledWith("certificate-react-native-deep-dive.pdf");
+    expect(mockDoc.save).toHaveBeenCalledWith(
+      "certificate-react-native-deep-dive.pdf"
+    );
 
     // Check that student name was written
-    expect(mockDoc.text).toHaveBeenCalledWith("Jane Doe", expect.any(Number), expect.any(Number), expect.any(Object));
+    expect(mockDoc.text).toHaveBeenCalledWith(
+      "Jane Doe",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
 
     // Check that course title was written
-    expect(mockDoc.text).toHaveBeenCalledWith("React Native Deep Dive", expect.any(Number), expect.any(Number), expect.any(Object));
+    expect(mockDoc.text).toHaveBeenCalledWith(
+      "React Native Deep Dive",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
 
     // Check that instructor was written
-    expect(mockDoc.text).toHaveBeenCalledWith("Sarah Jenkins", expect.any(Number), expect.any(Number), expect.any(Object));
+    expect(mockDoc.text).toHaveBeenCalledWith(
+      "Sarah Jenkins",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
 
     // Check that A4 dimensions were queried
     expect(mockDoc.internal.pageSize.getWidth).toHaveBeenCalled();
@@ -67,7 +84,14 @@ describe("generateCertificatePDF Utility", () => {
     const filename = generateCertificatePDF({});
 
     expect(filename).toBe("certificate-advanced-course.pdf");
-    expect(mockDoc.save).toHaveBeenCalledWith("certificate-advanced-course.pdf");
-    expect(mockDoc.text).toHaveBeenCalledWith("Learnova Student", expect.any(Number), expect.any(Number), expect.any(Object));
+    expect(mockDoc.save).toHaveBeenCalledWith(
+      "certificate-advanced-course.pdf"
+    );
+    expect(mockDoc.text).toHaveBeenCalledWith(
+      "Learnova Student",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Object)
+    );
   });
 });
