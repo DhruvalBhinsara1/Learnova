@@ -226,6 +226,7 @@ function AnimatedCounter({ to, suffix }) {
 
 // --- Main Page Component ---
 export default function Page() {
+  const t = useTranslations("home");
   const [hoveredRing, setHoveredRing] = useState(null);
   const [activeRole, setActiveRole] = useState("admins");
   const [openFaqIdx, setOpenFaqIdx] = useState(null);
@@ -598,5 +599,7 @@ export default function Page() {
         </section>
       </div>
     </>
+  );
+}>
   );
 }

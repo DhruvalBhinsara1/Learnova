@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useTheme } from "next-themes";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 
@@ -640,7 +641,7 @@ export function Navbar() {
                     >
                       <Link href="/auth?mode=signup">
                         <span className="flex items-center gap-1.5">
-                          Sign Up{" "}
+                          {t("signup")}{" "}
                           <Sparkles className="h-3.5 w-3.5 text-blue-200" />
                         </span>
                       </Link>
@@ -892,3 +893,4 @@ export function Navbar() {
     </>
   );
 }
+
