@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CommentSection from "../CommentSection";
 
@@ -36,21 +36,22 @@ describe("CommentSection", () => {
     const { unmount } = render(React.createElement(CommentSection));
 
     await waitFor(() =>
-      expect(window.localStorage.getItem("comments_homepage")).toBeTruthy(),
+      expect(window.localStorage.getItem("comments_homepage")).toBeTruthy()
     );
 
-    await user.type(
-      screen.getByPlaceholderText(/write a comment or share feedback/i),
-      "This should persist{enter}",
+    const input = screen.getByPlaceholderText(
+      /write a comment or share feedback/i
     );
+    await user.type(input, "This should persist");
+    fireEvent.submit(input.closest("form"));
 
     await waitFor(() => {
       expect(
-        JSON.parse(window.localStorage.getItem("comments_homepage")),
+        JSON.parse(window.localStorage.getItem("comments_homepage"))
       ).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ text: "This should persist" }),
-        ]),
+        ])
       );
     });
     expect(window.localStorage.getItem("comments_undefined")).toBeNull();

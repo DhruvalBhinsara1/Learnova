@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/apiClient";
 
 const ROLE_CHECK_INTERVAL_MS = 5 * 60 * 1000; // Check every 5 minutes
 
@@ -32,7 +33,7 @@ export function useRoleSync() {
     async function checkRoleSync() {
       try {
         const token = await user.getIdToken();
-        const response = await fetch("/api/auth/me", {
+        const response = await apiFetch("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -42,7 +43,9 @@ export function useRoleSync() {
 
         // If Firestore role differs from JWT role, force a token refresh
         if (data.role !== data.jwtRole) {
-          console.info("[useRoleSync] Role mismatch detected, forcing token refresh");
+          console.info(
+            "[useRoleSync] Role mismatch detected, forcing token refresh"
+          );
           await forceTokenRefresh();
         }
       } catch {

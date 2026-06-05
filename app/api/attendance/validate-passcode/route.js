@@ -26,7 +26,9 @@ export const POST = withErrorHandler(async (request) => {
   const decodedToken = await requireAuth(request);
 
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`passcode_${ip}_${decodedToken?.uid}`);
+  const rateLimitResult = await checkRateLimit(
+    `passcode_${ip}_${decodedToken?.uid}`
+  );
 
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
@@ -39,23 +41,44 @@ export const POST = withErrorHandler(async (request) => {
   initializeFirebase();
 
   const body = await parseJSON(request, 1024);
-  
+
   const validation = passcodeSchema.safeParse(body);
   if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
+    const firstError =
+      validation.error.issues?.[0]?.message || "Invalid request payload";
     return NextResponse.json(
       { valid: false, error: firstError },
       { status: 400 }
     );
   }
-  
+
   const { passcode } = validation.data;
 
+  const { getUserProfile } = await import("@/lib/firebase-admin");
+  const profile = await getUserProfile(decodedToken.uid);
+  if (!profile) {
+    return NextResponse.json(
+      { valid: false, error: "User profile not found." },
+      { status: 404 }
+    );
+  }
+
+  const { getSettingsDocId } = await import("@/utils/passcodeUtils");
+  const settingsDocId = getSettingsDocId(profile);
+
   const db = admin.firestore();
-  const settingsDoc = await db
+  let settingsDoc = await db
     .collection("attendance_settings")
-    .doc("current_settings")
+    .doc(settingsDocId)
     .get();
+
+  if (!settingsDoc.exists) {
+    // Fallback for existing data
+    settingsDoc = await db
+      .collection("attendance_settings")
+      .doc("current_settings")
+      .get();
+  }
 
   if (!settingsDoc.exists) {
     return NextResponse.json(
@@ -85,7 +108,11 @@ export const POST = withErrorHandler(async (request) => {
   }
 
   return NextResponse.json(
-    { valid: false, error: "Invalid passcode. Please contact your teacher for the correct code." },
+    {
+      valid: false,
+      error:
+        "Invalid passcode. Please contact your teacher for the correct code.",
+    },
     { status: 401 }
   );
 });

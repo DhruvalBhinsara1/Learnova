@@ -37,8 +37,25 @@ export function verifyPasscode(passcode, storedHash) {
 
   // Use timing-safe comparison to prevent timing side-channel attacks
   try {
-    return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(originalHash, "hex"));
+    return crypto.timingSafeEqual(
+      Buffer.from(hash, "hex"),
+      Buffer.from(originalHash, "hex")
+    );
   } catch {
     return false;
   }
+}
+
+/**
+ * Returns the tenant-scoped document ID for attendance settings.
+ * Logs a warning if the instituteId is missing, falling back to uid.
+ */
+export function getSettingsDocId(profile) {
+  if (!profile.instituteId) {
+    console.warn(
+      `[Attendance Settings] User ${profile.uid} is missing instituteId. Falling back to uid.`
+    );
+    return profile.uid;
+  }
+  return profile.instituteId;
 }

@@ -1,112 +1,86 @@
+import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
-import { jsonSuccess } from "@/lib/api-response";
-import { z } from "zod";
-import { filterXSS } from "xss";
-
-import { withErrorHandler } from "@/lib/error-handler";
 import { requireAuth } from "@/lib/rbac";
-import { AppError, ValidationError } from "@/lib/errors";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { AppError } from "@/lib/errors";
 
-// Force dynamic rendering to prevent build-time database connection errors
 export const dynamic = "force-dynamic";
 
-const textSanitizeOptions = {
-  whiteList: {},
-  stripIgnoreTag: true,
-  stripIgnoreTagBody: ["script", "style", "iframe", "object", "embed", "template"],
-};
-
-/**
- * Stores chat content as plain text/Markdown by stripping HTML markup instead of
- * persisting escaped tags that later appear in conversation history.
- */
-const sanitizeText = (text) => {
-  if (typeof text !== "string") return "";
-  return filterXSS(text, textSanitizeOptions).trim();
-};
-
-const conversationSchema = z.object({
-  userMessage: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "userMessage is required"
-          : "userMessage must be a string",
-    })
-    .min(1, "userMessage cannot be empty")
-    .max(10000, "userMessage must not exceed 10,000 characters")
-    .transform(sanitizeText),
-
-  botMessage: z
-    .string({
-      error: (issue) =>
-        issue.input === undefined
-          ? "botMessage is required"
-          : "botMessage must be a string",
-    })
-    .min(1, "botMessage cannot be empty")
-    .max(10000, "botMessage must not exceed 10,000 characters")
-    .transform(sanitizeText),
-});
-
-export const POST = withErrorHandler(async (req) => {
-  const decodedToken = await requireAuth(req);
-  const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`conversations_post_${ip}_${decodedToken.uid}`);
-  if (!rateLimitResult.allowed) {
-    throw new AppError("Too many attempts. Please try again later.", 429);
-  }
-  const rawText = await req.text();
-  const byteLength = new TextEncoder().encode(rawText).length;
-  if (byteLength > 1024 * 1024) {
-    throw new AppError("Payload too large", 413);
-  }
-
-  let parsedBody;
+export async function GET(request) {
   try {
-    parsedBody = JSON.parse(rawText);
-  } catch (e) {
-    throw new ValidationError("Invalid JSON payload");
+    const decodedToken = await requireAuth(request);
+    let userId = decodedToken.uid || decodedToken.sub;
+
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 10;
+    const skip = (page - 1) * limit;
+
+    const db = await connectDb();
+    const conversations = await db
+      .collection("conversations")
+      .find({ userId })
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+
+    // Reverse to return chronological order for the frontend
+    conversations.reverse();
+
+    return NextResponse.json({ success: true, data: conversations });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
+}
 
-  const validation = conversationSchema.safeParse(parsedBody);
-  if (!validation.success) {
-    const firstError = validation.error.issues?.[0]?.message || "Invalid request payload";
-    throw new ValidationError(firstError);
+export async function POST(request) {
+  try {
+    const decodedToken = await requireAuth(request);
+    let userId = decodedToken.uid || decodedToken.sub;
+
+    const body = await request.json();
+    const { userMessage, botMessage } = body;
+
+    if (!userMessage || !botMessage) {
+      return NextResponse.json(
+        { error: "Validation Error: Missing messages." },
+        { status: 400 }
+      );
+    }
+
+    const db = await connectDb();
+    const conversation = {
+      userId,
+      userMessage,
+      botMessage,
+      timestamp: new Date().toISOString(),
+    };
+
+    const result = await db.collection("conversations").insertOne(conversation);
+
+    return NextResponse.json({
+      success: true,
+      data: { _id: result.insertedId, ...conversation },
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      );
+    }
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
-
-  const { userMessage, botMessage } = validation.data;
-  const db = await connectDb();
-  
-  const newConversation = {
-    userId: decodedToken.uid,
-    userEmail: decodedToken.email,
-    userMessage,
-    botMessage,
-    timestamp: new Date(),
-  };
-
-  await db.collection("conversations").insertOne(newConversation);
-
-  return jsonSuccess(newConversation);
-});
-
-export const GET = withErrorHandler(async (request) => {
-  const decodedToken = await requireAuth(request);
-  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-  const rateLimitResult = await checkRateLimit(`conversations_get_${ip}_${decodedToken.uid}`);
-  if (!rateLimitResult.allowed) {
-    throw new AppError("Too many attempts. Please try again later.", 429);
-  }
-  const db = await connectDb();
-
-  // Sorted by newest first (-1) to fetch recent activity
-  const history = await db.collection("conversations")
-    .find({ userId: decodedToken.uid })
-    .sort({ timestamp: -1 })
-    .limit(50)
-    .toArray();
-
-  return jsonSuccess(history.reverse());
-});
+}

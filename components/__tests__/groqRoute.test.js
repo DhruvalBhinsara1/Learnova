@@ -28,8 +28,8 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   const originalEnv = { ...process.env };
 
   beforeAll(() => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterAll(() => {
@@ -43,7 +43,6 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     process.env.GROQ_API_KEY = "mock-groq-key";
     checkRateLimit.mockResolvedValue({ allowed: true, remaining: 9 });
   });
-
 
   const createMockRequest = (headers, bodyData) => {
     return {
@@ -64,7 +63,7 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
+    expect(body.error).toBe("Unauthorized");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -80,12 +79,16 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(401);
-    expect(body.error.message).toBe("Unauthorized");
+    expect(body.error).toBe("Unauthorized");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("rejects missing message input with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-123",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
@@ -95,14 +98,18 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.message).toBe("Message is required");
+    expect(body.error).toBe("Message is required");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("rejects over-length messages with 400 Bad Request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-123",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
-    const longMessage = "a".repeat(2001);
+    const longMessage = "a".repeat(10001);
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
       { message: longMessage }
@@ -111,12 +118,16 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.message).toBe("Message too long (max 2000 characters)");
+    expect(body.error).toBe("Message too long (max 2000 characters)");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
   test("enforces rate limits per authenticated user and returns 429 Too Many Requests", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-rate-limit-test", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-rate-limit-test",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     checkRateLimit
       .mockResolvedValueOnce({ allowed: true, remaining: 9 })
@@ -157,11 +168,15 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error.message).toBe("Too many requests. Please try again later.");
+    expect(body.error).toBe("Too many requests. Please try again later.");
   });
 
   test("successfully resolves Groq call for authenticated, non-rate-limited requests", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-success-test", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-success-test",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     global.fetch.mockResolvedValue({
       ok: true,
@@ -184,7 +199,11 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("aborts the request and returns 504 Gateway Timeout when Groq API hangs/exceeds timeout", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-123", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-123",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     // Mock fetch to simulate an AbortError being thrown
     global.fetch.mockImplementation(() => {
@@ -201,12 +220,16 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(504);
-    expect(body.error.message).toBe("Gateway Timeout: Groq did not respond in time.");
+    expect(body.error).toBe("Gateway Timeout: Groq did not respond in time.");
     expect(global.fetch).toHaveBeenCalled();
   });
 
   test("maps Groq upstream error payload to API error response", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-error", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-upstream-error",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     global.fetch.mockResolvedValue({
       ok: false,
@@ -224,11 +247,15 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(429);
-    expect(body.error.message).toBe("Upstream quota exceeded");
+    expect(body.error).toBe("Upstream quota exceeded");
   });
 
   test("uses fallback message when Groq upstream error body is invalid", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-upstream-invalid-json", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-upstream-invalid-json",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     global.fetch.mockResolvedValue({
       ok: false,
@@ -244,11 +271,15 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     const body = await response.json();
 
     expect(response.status).toBe(500);
-    expect(body.error.message).toBe("Groq API request failed");
+    expect(body.error).toBe("Groq API request failed");
   });
 
   test("accepts messages array format and extracts last user message", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-msg-array", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-msg-array",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     global.fetch.mockResolvedValue({
       ok: true,
@@ -276,25 +307,31 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
   });
 
   test("rejects messages array with no user role entries as missing input", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-no-user-msg", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-no-user-msg",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     const req = createMockRequest(
       { authorization: "Bearer valid-token" },
       {
-        messages: [
-          { role: "assistant", content: "Hello" },
-        ],
+        messages: [{ role: "assistant", content: "Hello" }],
       }
     );
     const response = await POST(req);
     const body = await response.json();
 
     expect(response.status).toBe(400);
-    expect(body.error.message).toBe("Message is required");
+    expect(body.error).toBe("Message is required");
   });
 
   test("passes conversation history to Groq API request", async () => {
-    verifyFirebaseToken.mockResolvedValue({ uid: "user-history-check", email: "user@example.com" });
+    verifyFirebaseToken.mockResolvedValue({
+      uid: "user-history-check",
+      email: "user@example.com",
+      email_verified: true,
+    });
 
     let fetchBody;
     global.fetch.mockImplementation((url, options) => {
@@ -323,12 +360,14 @@ describe("POST /api/groq - Security, Authentication, Rate Limiting, and Timeout 
     expect(response.status).toBe(200);
     expect(body.data.message).toBe("Response with memory");
 
-    const userMessages = fetchBody.messages.filter(m => m.role === "user");
+    const userMessages = fetchBody.messages.filter((m) => m.role === "user");
     expect(userMessages).toHaveLength(2);
     expect(userMessages[0].content).toBe("My name is Alice");
     expect(userMessages[1].content).toBe("What is my name?");
 
-    const assistantMessages = fetchBody.messages.filter(m => m.role === "assistant");
+    const assistantMessages = fetchBody.messages.filter(
+      (m) => m.role === "assistant"
+    );
     expect(assistantMessages).toHaveLength(1);
     expect(assistantMessages[0].content).toBe("Nice to meet you Alice!");
   });

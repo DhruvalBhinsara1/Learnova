@@ -1,5 +1,5 @@
 import { POST } from "./route";
-import { authenticateRequest, parseJSON } from "@/lib/error-handler";
+import { parseJSON } from "@/lib/error-handler";
 import { getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { checkRateLimit } from "@/lib/rateLimit";
@@ -7,24 +7,21 @@ import { assertApiSuccess } from "@/testUtils/assertApiSuccess";
 import { assertApiError } from "@/testUtils/assertApiError";
 
 vi.mock("@/lib/error-handler", () => {
-  const { AppError } = require("@/lib/errors");
   return {
-    authenticateRequest: vi.fn(),
     withErrorHandler: (handler) => {
       return async (request, ...args) => {
         try {
           return await handler(request, ...args);
         } catch (error) {
-          if (error instanceof AppError) {
-            const payload = error.originalMessage !== undefined ? error.originalMessage : error.message;
-            return {
-              status: error.statusCode,
-              json: async () => ({ error: payload }),
-            };
-          }
+          const payload =
+            error.originalMessage !== undefined
+              ? error.originalMessage
+              : error.message;
           return {
-            status: 500,
-            json: async () => ({ error: error.message || "Internal server error" }),
+            status: error.statusCode ?? 500,
+            json: async () => ({
+              error: payload || error.message || "Internal server error",
+            }),
           };
         }
       };
@@ -32,6 +29,10 @@ vi.mock("@/lib/error-handler", () => {
     parseJSON: vi.fn(),
   };
 });
+
+vi.mock("@/lib/rbac", () => ({
+  requireAuth: vi.fn(),
+}));
 
 vi.mock("@/lib/rateLimit", () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 9 }),
@@ -49,6 +50,18 @@ vi.mock("@/lib/gamification-service", () => ({
 vi.mock("@/lib/dateUtils", () => ({
   getLocalDateKey: vi.fn(() => "2026-05-25"),
 }));
+
+vi.mock("@/lib/mongodb", () => {
+  const mockDb = {
+    collection: vi.fn(() => ({
+      updateOne: vi.fn().mockResolvedValue({}),
+      deleteOne: vi.fn().mockResolvedValue({}),
+    })),
+  };
+  return {
+    connectDb: vi.fn().mockResolvedValue(mockDb),
+  };
+});
 
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: vi.fn(),
@@ -91,7 +104,8 @@ describe("attendance record route", () => {
   };
 
   test("writes attendance to Firestore with canonical doc id + instituteId using transaction", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -138,12 +152,13 @@ describe("attendance record route", () => {
         offlineSynced: false,
         timestamp: FieldValue.serverTimestamp.mock.results[0].value,
       }),
-      { merge: true },
+      { merge: true }
     );
   });
 
   test("prevents duplicate check-in if document already exists", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -181,15 +196,20 @@ describe("attendance record route", () => {
   });
 
   test("rejects request if unauthorized", async () => {
-    const { UnauthorizedError } = require("@/lib/errors");
-    authenticateRequest.mockRejectedValue(new UnauthorizedError("Unauthorized"));
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockRejectedValue({
+      statusCode: 401,
+      message: "Unauthorized",
+      originalMessage: "Unauthorized",
+    });
 
     const response = await POST(createMockRequest());
     await assertApiError(response, 401, "Unauthorized");
   });
 
   test("rejects request with 403 Forbidden if attempting to submit for another user", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "another-user-456",
       studentName: "Client Name",
@@ -199,47 +219,68 @@ describe("attendance record route", () => {
     });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 403, "Forbidden: Cannot submit attendance for another user");
+    await assertApiError(
+      response,
+      403,
+      "Forbidden: Cannot submit attendance for another user"
+    );
   });
 
   test("rejects request with 400 Bad Request if confidence score is invalid or below threshold", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
 
     // Scenario 1: below 60
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 59,
     });
     let response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(
+      response,
+      400,
+      "Bad Request: Invalid or spoofed confidence score"
+    );
 
-    // Scenario 2: above 100
+    // Scenario 2: above 100 — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: 101,
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400, "Validation failed");
 
-    // Scenario 3: NaN
+    // Scenario 3: NaN — caught by schema validation
     parseJSON.mockResolvedValue({
       userId: "user-123",
+      studentName: "Test User",
+      email: "test@example.com",
       confidenceScore: "not-a-number",
     });
     response = await POST(createMockRequest());
-    await assertApiError(response, 400, "Bad Request: Invalid or spoofed confidence score");
+    await assertApiError(response, 400, "Validation failed");
   });
 
   test("rejects request if rate limit exceeded", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     checkRateLimit.mockResolvedValue({ allowed: false });
 
     const response = await POST(createMockRequest());
-    await assertApiError(response, 429, "Too many attempts. Please try again later.");
+    await assertApiError(
+      response,
+      429,
+      "Too many attempts. Please try again later."
+    );
   });
 
   test("simulates concurrent double-click requests and guarantees single write via OCC retry simulation", async () => {
-    authenticateRequest.mockResolvedValue({ uid: "user-123" });
+    const { requireAuth } = await import("@/lib/rbac");
+    requireAuth.mockResolvedValue({ uid: "user-123" });
     parseJSON.mockResolvedValue({
       userId: "user-123",
       studentName: "Client Name",
@@ -302,7 +343,10 @@ describe("attendance record route", () => {
     const resJson1 = await response1.json();
     const resJson2 = await response2.json();
 
-    const results = [resJson1.data.alreadyRecorded, resJson2.data.alreadyRecorded].sort();
+    const results = [
+      resJson1.data.alreadyRecorded,
+      resJson2.data.alreadyRecorded,
+    ].sort();
     expect(results).toEqual([false, true]);
 
     expect(dbStore.size).toBe(1);
