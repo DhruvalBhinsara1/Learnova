@@ -15,7 +15,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
-    "build": "node --experimental-global-webcrypto node_modules/next/dist/bin/next build",
+    "build": "next build",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
