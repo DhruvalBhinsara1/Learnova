@@ -203,9 +203,6 @@ const createPdfDownload = (notice) => {
   // ────────────────────────────────────────────────────────────
 
   const lines = doc.splitTextToSize(safeContent, contentWidth);
-
-
-  const lines = doc.splitTextToSize(notice.content || "", contentWidth);
   const lineHeight = 6.5;
 
   lines.forEach((line) => {
@@ -531,5 +528,4 @@ const NoticeCard = ({
   );
 };
 
-export default NoticeCard;
 export default NoticeCard;
