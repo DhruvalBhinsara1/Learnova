@@ -3,7 +3,7 @@ import React from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getLocale } from "next-intl/server";
 
 // ─── Third-party libraries ───────────────────────────────────────────────────
 import { Toaster } from "react-hot-toast";
@@ -284,8 +284,9 @@ export const viewport = {
 // ─── Root layout ──────────────────────────────────────────────────────────────
 export default async function RootLayout({ children }) {
   const messages = await getMessages();
+  const locale = await getLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* ── Favicons ── */}
         <link rel="icon" href="/favicon.ico" sizes="any" />

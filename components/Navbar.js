@@ -130,7 +130,7 @@ export function Navbar() {
 
   const isDark = (mounted ? resolvedTheme : null) === "dark";
   const switchLanguage = (lang) => {
-    document.cookie = `locale=${lang}; path=/; max-age=31536000`;
+    document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000`;
     window.location.reload();
   };
 
