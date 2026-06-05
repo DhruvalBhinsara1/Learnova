@@ -83,28 +83,7 @@ export async function recordAttendance({
 
   const docRef = doc(db, "attendance_records", `${userId}_${todayKey}`);
 
-  // OFFLINE MODE
-  if (typeof window !== "undefined" && !navigator.onLine) {
-    console.warn("Device is offline. Queuing attendance locally.");
-
-    await handleOfflineRequest("/api/attendance/record", {
-      method: "POST",
-      body: JSON.stringify({
-        userId,
-        studentName,
-        email,
-        confidenceScore: confidenceScore ?? 0,
-        date: todayKey,
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    return {
-      alreadyRecorded: false,
-      newRate: null,
-      queuedOffline: true,
-    };
-  }
+  // OFFLINE MODE check removed. Workbox Background Sync handles it automatically.
 
   // DUPLICATE CHECK
   const existingDoc = await getDoc(docRef);
@@ -121,20 +100,34 @@ export async function recordAttendance({
     throw new Error("Authentication token unavailable. Please sign in again.");
   }
 
-  const response = await fetch("/api/attendance/record", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      userId,
-      studentName,
-      email,
-      confidenceScore: confidenceScore ?? 0,
-      date: todayKey,
-    }),
-  });
+  let response;
+  try {
+    response = await fetch("/api/attendance/record", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userId,
+        studentName,
+        email,
+        confidenceScore: confidenceScore ?? 0,
+        date: todayKey,
+      }),
+    });
+  } catch (error) {
+    // If it's a network error, Workbox Background Sync has queued the request
+    if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
+      console.warn("Network error during attendance submission. Workbox will sync later.");
+      return {
+        alreadyRecorded: false,
+        newRate: null,
+        queuedOffline: true,
+      };
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     let errorMessage = "Failed to record attendance securely on the server.";

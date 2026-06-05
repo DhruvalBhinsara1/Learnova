@@ -15,6 +15,7 @@ const BLINK_COOLDOWN_MS = 300;
 const PROCESSING_INTERVAL_MS = 100;
 
 export default function FaceRecognizer({ authUser }) {
+  // ── REFS: Track lifecycle and streams ──────────
   const isMounted = useRef(true);
   const activeStreamRef = useRef(null);
   const videoRef = useRef(null);
@@ -28,6 +29,7 @@ export default function FaceRecognizer({ authUser }) {
 
   const animationFrameId = useRef(null);
   const lastDetectionTime = useRef(0);
+  
   const blinkStateRef = useRef({
     isEyeClosed: false,
     blinkCount: 0,
@@ -35,11 +37,7 @@ export default function FaceRecognizer({ authUser }) {
     lastBlinkTime: 0,
   });
 
-  const {
-    labels: fetchedLabels,
-    loading: labelsLoading,
-    error,
-  } = useLabels(authUser);
+  const { labels: fetchedLabels, loading: labelsLoading, error } = useLabels(authUser);
 
   const [message, setMessage] = useState("Loading AI models...");
   const [finished, setFinished] = useState(false);
@@ -51,6 +49,27 @@ export default function FaceRecognizer({ authUser }) {
   const [livenessState, setLivenessState] = useState("IDLE");
   const [blinkPrompt, setBlinkPrompt] = useState("");
   const [facingMode, setFacingMode] = useState("user");
+  const [isOffline, setIsOffline] = useState(typeof window !== "undefined" ? !navigator.onLine : false);
+
+  // ── HARD CLEANUP FUNCTION ──────────
+  const stopAllMedia = useCallback(() => {
+    isMounted.current = false;
+    if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
+    if (activeStreamRef.current) {
+      activeStreamRef.current.getTracks().forEach((t) => t.stop());
+      activeStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.pause();
+    }
+  }, []);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return stopAllMedia;
+  }, [stopAllMedia]);
+
   const [isOffline, setIsOffline] = useState(
     typeof window !== "undefined" ? !navigator.onLine : false
   );
@@ -63,6 +82,13 @@ export default function FaceRecognizer({ authUser }) {
     const handleOnline = () => {
       if (!isMounted.current) return;
       setIsOffline(false);
+      setAttendanceState((prev) => {
+        if (prev === "queued-offline") {
+          setMessage("Synced");
+          return "saved";
+        }
+        return prev;
+      });
       syncAttendanceQueue();
     };
     const handleOffline = () => {
@@ -357,6 +383,15 @@ export default function FaceRecognizer({ authUser }) {
     );
   };
 
+  const processVideo = async () => {
+    if (!isMounted.current || !videoRef.current || videoRef.current.paused) return;
+
+    let faceapi = faceapiRef.current;
+    if (!faceapi) {
+      faceapi = await import("face-api.js");
+      faceapiRef.current = faceapi;
+    }
+    if (!isMounted.current || abortControllerRef.current?.signal.aborted) return;
   const processVideo = async (signal) => {
     if (
       !videoRef.current ||
@@ -572,9 +607,7 @@ export default function FaceRecognizer({ authUser }) {
           return;
         if (result.queuedOffline) {
           setAttendanceState("queued-offline");
-          setMessage(
-            "Attendance cached offline. Waiting for network sync... ✅"
-          );
+          setMessage("Offline - Syncing later");
         } else {
           setAttendanceState(
             result.alreadyRecorded ? "already-recorded" : "saved"
@@ -761,7 +794,7 @@ export default function FaceRecognizer({ authUser }) {
           {attendanceState === "queued-offline" && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3.5 text-center space-y-1">
               <p className="text-blue-300 font-semibold text-sm">
-                Attendance saved offline.
+                Offline - Syncing later
               </p>
               <p className="text-xs text-gray-300">
                 Will sync automatically when connection is restored.

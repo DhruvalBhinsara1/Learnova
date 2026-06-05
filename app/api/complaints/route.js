@@ -2,7 +2,8 @@ import { connectDb } from "@/lib/mongodb";
 import { requireAuth } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
 import { AppError } from "@/lib/errors";
-import { jsonSuccess } from "@/lib/api-response";
+import { jsonSuccess, fail } from "@/lib/api-response";
+import { checkRateLimit } from "@/lib/rateLimit";
 import { createComplaintSchema, withValidation } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,19 @@ export const POST = withErrorHandler(
     createComplaintSchema,
     async (req, validatedData) => {
       const decodedToken = await requireAuth(req);
+
+      // Rate limit by both IP and userId to prevent spam from authenticated users
+      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const rateLimitResult = await checkRateLimit(
+        `complaints_post_${ip}_${decodedToken.uid}`
+      );
+      if (!rateLimitResult.allowed) {
+        return fail(
+          429,
+          "TOO_MANY_REQUESTS",
+          "Too many complaint submissions. Please wait before submitting again."
+        );
+      }
 
       const { category, subject, description, priority } = validatedData;
 

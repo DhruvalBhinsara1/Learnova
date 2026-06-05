@@ -1,4 +1,19 @@
 import { processSyncQueue } from "../services/syncQueue";
+import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
+
+const bgSyncPlugin = new BackgroundSyncPlugin("attendance-queue", {
+  maxRetentionTime: 24 * 60, // Retry for max of 24 Hours (specified in minutes)
+});
+
+registerRoute(
+  /\/api\/attendance\/record/,
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  "POST"
+);
 
 let csrfTokenCache = null; // { token: string, fetchedAt: number }
 let csrfTokenPromise = null;
