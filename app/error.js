@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useTranslations } from 'next-intl';
-import { useEffect } from 'react';
+import { useTranslations } from "next-intl";
+import { useEffect } from "react";
 
 export default function Error({ error, reset }) {
-  const t = useTranslations('common');
+  const t = useTranslations("common");
 
   useEffect(() => {
-    console.error('Runtime error:', error?.message ?? 'Unknown error');
+    console.error("Runtime error:", error?.message ?? "Unknown error");
   }, [error]);
 
   return (

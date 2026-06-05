@@ -124,8 +124,15 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
-  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
-  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const dateStr = createdAt.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = createdAt.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
   doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
@@ -187,12 +194,13 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
   doc.setTextColor(51, 65, 85); // Slate-700
-  
+
   // ── FIX FOR ISSUE #2007: Safe text extraction and fallback ──
   const rawContent = notice.content || notice.text;
-  const safeContent = (typeof rawContent === "string" && rawContent.trim().length > 0) 
-    ? rawContent 
-    : "No text content provided for this notice.";
+  const safeContent =
+    typeof rawContent === "string" && rawContent.trim().length > 0
+      ? rawContent
+      : "No text content provided for this notice.";
   // ────────────────────────────────────────────────────────────
 
   const lines = doc.splitTextToSize(safeContent, contentWidth);
@@ -310,33 +318,33 @@ const NoticeCard = ({
       // FIX FOR ISSUE #2006: Add toast confirmation on success
       await navigator.clipboard.writeText(mdText);
       setCopyFeedback(true);
-      toast.success('Notice link copied to clipboard!');
+      toast.success("Notice link copied to clipboard!");
       setTimeout(() => setCopyFeedback(false), 2000);
     } catch (err) {
       console.error("Failed to copy markdown to clipboard", err);
       // Fallback UI/UX error handling
-      toast.error('Failed to copy. Check browser permissions.');
+      toast.error("Failed to copy. Check browser permissions.");
     }
   }, [notice]);
 
   const handleCopyLink = useCallback(async () => {
-  const noticeUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/notices/${notice.id}`
-      : "";
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
 
-  try {
-    await navigator.clipboard.writeText(noticeUrl);
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
 
-    setCopyFeedback(true);
+      setCopyFeedback(true);
 
-    setTimeout(() => {
-      setCopyFeedback(false);
-    }, 2000);
-  } catch (err) {
-    console.error("Failed to copy notice link", err);
-  }
-}, [notice]);
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice link", err);
+    }
+  }, [notice]);
 
   const handleShareNotice = useCallback(async () => {
     const noticeUrl =
@@ -421,8 +429,9 @@ const NoticeCard = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
-            className={`text-xl font-semibold transition ${isRead ? "text-slate-200" : "text-white"
-              }`}
+            className={`text-xl font-semibold transition ${
+              isRead ? "text-slate-200" : "text-white"
+            }`}
           >
             {highlightMatch(notice.title, searchQuery)}
           </motion.h3>
@@ -434,10 +443,11 @@ const NoticeCard = ({
             onClick={onToggleRead}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${isRead
+            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
+              isRead
                 ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
                 : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
-              }`}
+            }`}
             aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
           >
             {isRead ? (

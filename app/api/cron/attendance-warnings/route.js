@@ -86,7 +86,6 @@ async function getRecentWarningUserIds(db, userIds, cooldownDate) {
   return new Set(checks.filter(Boolean));
 }
 
-
 async function sendWarningEmails(emailsToSend) {
   const hasEmailConfig =
     process.env.EMAILJS_SERVICE_ID &&
@@ -138,10 +137,9 @@ export async function GET(request) {
     // Ensure the warning_logs collection has a compound index on (userId, createdAt)
     // so the cooldown query does not trigger a full collection scan
     try {
-      await db.collection("warning_logs").createIndex(
-        { userId: 1, createdAt: -1 },
-        { background: true }
-      );
+      await db
+        .collection("warning_logs")
+        .createIndex({ userId: 1, createdAt: -1 }, { background: true });
     } catch {
       // Index may already exist
     }
@@ -231,10 +229,13 @@ export async function GET(request) {
       const instituteId = rawInstituteId.trim();
 
       // Fetch students for this institute only instead of loading all students globally
-      const instituteStudents = await db.collection('users').find({
-        role: 'student',
-        instituteId,
-      }).toArray();
+      const instituteStudents = await db
+        .collection("users")
+        .find({
+          role: "student",
+          instituteId,
+        })
+        .toArray();
 
       if (instituteStudents.length === 0) continue;
 
@@ -264,7 +265,10 @@ export async function GET(request) {
         }
 
         const studentAttendance = attendanceByUser.get(studentUid) || [];
-        const evaluation = evaluateStudentAttendance(studentAttendance, threshold);
+        const evaluation = evaluateStudentAttendance(
+          studentAttendance,
+          threshold
+        );
 
         if (evaluation.isBelowThreshold) {
           const email = student.email;
