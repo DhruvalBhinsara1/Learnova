@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/contexts/AuthContext";
-import SettingsPage from "@/components/settings";
+import SettingsPage from "@/components/Settings";
 
 const Settings = () => {
   const { user, loading: authLoading } = useAuthContext();
@@ -30,7 +30,6 @@ const Settings = () => {
       </div>
     );
   }
-  
 
   // Prevent flash before redirect
   if (!user || !user.emailVerified) return null;

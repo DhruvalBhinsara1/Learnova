@@ -15,14 +15,17 @@ export default function ScrollToTop() {
     if (hash) {
       const id = hash.slice(1);
       requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: "auto", block: "start" });
+        document
+          .getElementById(id)
+          ?.scrollIntoView({ behavior: "auto", block: "start" });
       });
       return;
     }
 
-    const scrollToTop = () => window.scrollTo(0, 0);
-    scrollToTop();
-    requestAnimationFrame(scrollToTop);
+    window.scrollTo({
+      top: 0,
+      behavior: "instant",
+    });
   }, [pathname]);
 
   return null;

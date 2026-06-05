@@ -4,6 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/apiClient";
+import { extractNotificationsFromResponse } from "@/lib/notificationResponse";
+import { useSafePolling } from "@/hooks/useSafePolling";
+import { useIsMounted } from "@/hooks/useIsMounted";
+
+// AbortController for fetch requests
+const createAbortController = () => {
+  try {
+    return new AbortController();
+  } catch {
+    return null; // Fallback for environments without AbortController
+  }
+};
 
 function timeAgo(date) {
   if (!date) {
@@ -34,8 +47,10 @@ function timeAgo(date) {
 }
 
 const typeStyles = {
-  attendance: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200",
-  notice: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
+  attendance:
+    "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-200",
+  notice:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
   alert: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
 };
 
@@ -45,62 +60,84 @@ export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const isMounted = useIsMounted();
 
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   const previousIdsRef = useRef(new Set());
   const hasLoadedRef = useRef(false);
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user?.uid) {
-      setNotifications([]);
-      previousIdsRef.current = new Set();
-      hasLoadedRef.current = false;
+  useSafePolling(
+    async (signal) => {
+      if (loading) {
+        return;
+      }
+
+      if (!user?.uid) {
+        setNotifications([]);
+        previousIdsRef.current = new Set();
+        hasLoadedRef.current = false;
+        setError("");
+        return;
+      }
+
+      setIsLoading(true);
       setError("");
-      return;
-    }
 
-    setIsLoading(true);
-    setError("");
+      try {
+        const token = await user.getIdToken();
+        const data = await apiFetch(
+          `/api/notifications?userId=${encodeURIComponent(user.uid)}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            signal,
+          }
+        );
 
-    try {
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+        const fetchedNotifications = extractNotificationsFromResponse(data);
+        const currentIds = new Set(
+          fetchedNotifications
+            .map(
+              (notification) =>
+                notification._id?.toString?.() || notification._id
+            )
+            .filter(Boolean)
+        );
 
-      if (!response.ok) {
-        throw new Error("Unable to load notifications");
-      }
+        if (hasLoadedRef.current) {
+          const newNotifications = fetchedNotifications.filter(
+            (notification) => {
+              const id = notification._id?.toString?.() || notification._id;
+              return id && !previousIdsRef.current.has(id);
+            }
+          );
 
-      const data = await response.json();
-      const fetchedNotifications = Array.isArray(data.notifications) ? data.notifications : [];
-      const currentIds = new Set(
-        fetchedNotifications
-          .map((notification) => notification._id?.toString?.() || notification._id)
-          .filter(Boolean)
-      );
-
-      if (hasLoadedRef.current) {
-        const newNotifications = fetchedNotifications.filter((notification) => {
-          const id = notification._id?.toString?.() || notification._id;
-          return id && !previousIdsRef.current.has(id);
-        });
-
-        if (newNotifications.length > 0) {
-          newNotifications.forEach((notification) => {
-            toast.success(notification.message);
-          });
+          if (newNotifications.length > 0) {
+            newNotifications.forEach((notification) => {
+              toast.success(notification.message);
+            });
+          }
         }
-      }
 
-      previousIdsRef.current = currentIds;
-      hasLoadedRef.current = true;
-      setNotifications(fetchedNotifications);
-    } catch {
-      setError("Unable to load notifications");
-      setNotifications([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.uid]);
+        previousIdsRef.current = currentIds;
+        hasLoadedRef.current = true;
+        setNotifications(fetchedNotifications);
+        setError("");
+      } catch (err) {
+        if (err?.name !== "AbortError") {
+          setError("Unable to load notifications");
+          setNotifications([]);
+        }
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    30000,
+    [user?.uid, loading]
+  );
 
   const markNotificationsAsRead = useCallback(async () => {
     if (!user?.uid) {
@@ -108,48 +145,29 @@ export default function NotificationBell() {
     }
 
     try {
-      const response = await fetch("/api/notifications", {
+      const token = await user.getIdToken();
+      await apiFetch("/api/notifications", {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ userId: user.uid }),
+        body: { userId: user.uid },
       });
 
-      if (!response.ok) {
-        throw new Error("Unable to update notifications");
+      if (isMounted()) {
+        setNotifications((currentNotifications) =>
+          currentNotifications.map((notification) => ({
+            ...notification,
+            read: true,
+          }))
+        );
+        setError("");
       }
-
-      setNotifications((currentNotifications) =>
-        currentNotifications.map((notification) => ({
-          ...notification,
-          read: true,
-        }))
-      );
-      setError("");
-    } catch {
-      setError("Unable to update notifications");
+    } catch (err) {
+      if (isMounted())
+        setError(err.message || "Unable to update notifications");
     }
-  }, [user?.uid]);
-
-  useEffect(() => {
-    if (loading) {
-      return undefined;
-    }
-
-    if (!user?.uid) {
-      setNotifications([]);
-      previousIdsRef.current = new Set();
-      hasLoadedRef.current = false;
-      return undefined;
-    }
-
-    fetchNotifications();
-
-    const intervalId = setInterval(fetchNotifications, 30000);
-
-    return () => clearInterval(intervalId);
-  }, [fetchNotifications, loading, user?.uid]);
+  }, [user]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -181,7 +199,9 @@ export default function NotificationBell() {
     }
   };
 
-  const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.read
+  ).length;
 
   if (!user) {
     return null;
@@ -209,8 +229,12 @@ export default function NotificationBell() {
         <div className="fixed inset-x-4 top-20 z-[100] rounded-2xl border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950 sm:absolute sm:right-0 sm:top-full sm:mt-3 sm:w-96 sm:max-w-none">
           <div className="flex items-start justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div>
-              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">Notifications</p>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Latest updates</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                Notifications
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Latest updates
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {unreadCount > 0 ? (
@@ -238,15 +262,21 @@ export default function NotificationBell() {
 
           <div className="max-h-80 overflow-y-auto">
             {isLoading ? (
-              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">Loading notifications...</div>
+              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+                Loading notifications...
+              </div>
             ) : null}
 
             {error ? (
-              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{error}</div>
+              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+                {error}
+              </div>
             ) : null}
 
             {!isLoading && !error && notifications.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">No notifications yet</div>
+              <div className="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">
+                No notifications yet
+              </div>
             ) : null}
 
             {!isLoading && !error

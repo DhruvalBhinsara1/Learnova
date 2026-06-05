@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
 import { requireRole } from "@/lib/rbac";
 import { withErrorHandler } from "@/lib/error-handler";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, AppError } from "@/lib/errors";
 import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { success } from "@/lib/api-response";
 
 /**
  * GET /api/student/gamification
@@ -13,7 +14,17 @@ import { calculateLevel, calculateNextLevelXp } from "@/utils/gamification";
  * frontend never receives nulls.
  */
 export const GET = withErrorHandler(async (request) => {
-  const { payload: decodedToken } = await requireRole(request, ["student", "admin"]);
+  const { payload: decodedToken } = await requireRole(request, [
+    "student",
+    "admin",
+  ]);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(
+    `gamification_get_${ip}_${decodedToken.uid}`
+  );
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
   const db = await connectDb();
   const userId = decodedToken.uid;
 
@@ -25,7 +36,8 @@ export const GET = withErrorHandler(async (request) => {
 
   const totalXp = student.totalXp || 0;
   const currentLevel = student.currentLevel || calculateLevel(totalXp);
-  const xpToNextLevel = student.xpToNextLevel || calculateNextLevelXp(currentLevel);
+  const xpToNextLevel =
+    student.xpToNextLevel || calculateNextLevelXp(currentLevel);
 
   const gamificationData = {
     currentStreak: student.currentStreak || 0,
@@ -37,11 +49,10 @@ export const GET = withErrorHandler(async (request) => {
   };
 
   if (student.totalXp === undefined) {
-    await db.collection("users").updateOne(
-      { firebaseUid: userId },
-      { $set: gamificationData }
-    );
+    await db
+      .collection("users")
+      .updateOne({ firebaseUid: userId }, { $set: gamificationData });
   }
 
-  return NextResponse.json(gamificationData, { status: 200 });
+  return success(gamificationData);
 });

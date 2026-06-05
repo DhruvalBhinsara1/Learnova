@@ -64,7 +64,13 @@ export const validatePassword = (value) => {
   const hasNumber = /\d/.test(value);
   const hasSpecialChar = /[^A-Za-z0-9]/.test(value);
 
-  if (!hasMinimumLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecialChar) {
+  if (
+    !hasMinimumLength ||
+    !hasUppercase ||
+    !hasLowercase ||
+    !hasNumber ||
+    !hasSpecialChar
+  ) {
     return "Password must contain at least 8 characters, including uppercase, lowercase, number, and special character.";
   }
 
@@ -88,7 +94,7 @@ export const validateName = (value, fieldName = "Name") => {
 
   const nameRegex = /^[\p{L}\s\-']+$/u;
   if (!nameRegex.test(trimmed)) {
-    return `${fieldName} must only contain letters and spaces`;
+    return `${fieldName} must only contain letters, spaces, hyphens, and apostrophes`;
   }
 
   return true;

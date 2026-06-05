@@ -19,7 +19,7 @@
 export function escapeRegex(raw, maxLength = 100) {
   if (typeof raw !== "string") return "";
   // Truncate first so the escape pass operates on a bounded string
-  return raw.slice(0, maxLength).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return raw.slice(0, maxLength).replace(/[-[\]{}()*+?.,\\^$|#\s/]/g, "\\$&");
 }
 
 /**
@@ -34,7 +34,11 @@ export function escapeRegex(raw, maxLength = 100) {
  * @param {string}      defaultField  - Fallback used when field is not allowed
  * @returns {string} A safe sort field name guaranteed to be in allowedFields
  */
-export function sanitizeSortField(field, allowedFields, defaultField = "createdAt") {
+export function sanitizeSortField(
+  field,
+  allowedFields,
+  defaultField = "createdAt"
+) {
   if (typeof field !== "string" || !allowedFields.has(field)) {
     return defaultField;
   }
