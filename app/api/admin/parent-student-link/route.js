@@ -1,5 +1,5 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { withErrorHandler } from "@/lib/error-handler";
+import { withErrorHandler, parseJSON } from "@/lib/error-handler";
 import { requireAdmin } from "@/lib/rbac";
 import { initFirebaseAdmin } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
@@ -73,18 +73,34 @@ export const GET = withErrorHandler(async (request) => {
   return jsonSuccess({ links }, 200);
 });
 
-export const POST = withErrorHandler(
-  withValidation(parentStudentLinkSchema, async (request, validatedData) => {
-    const { payload } = await requireAdmin(request);
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
-    const rateLimitResult = await checkRateLimit(
-      `link_creation_${ip}_${payload.uid}`
-    );
-    if (!rateLimitResult.allowed) {
-      throw new AppError("Too many attempts. Please try again later.", 429);
-    }
+export const POST = withErrorHandler(async (request) => {
+  const { payload } = await requireAdmin(request);
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimitResult = await checkRateLimit(
+    `link_creation_${ip}_${payload.uid}`
+  );
+  if (!rateLimitResult.allowed) {
+    throw new AppError("Too many attempts. Please try again later.", 429);
+  }
 
-    const { parentEmail, studentEmail } = validatedData;
+  const body = await parseJSON(request);
+
+  if (!body || !body.parentEmail || !body.studentEmail) {
+    return jsonError("Parent and student emails are required", 400);
+  }
+
+  const validation = parentStudentLinkSchema.safeParse(body);
+  if (!validation.success) {
+    return jsonError({
+      message: "Validation failed",
+      details: validation.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    }, 400);
+  }
+
+  const { parentEmail, studentEmail } = validation.data;
 
     initFirebaseAdmin();
     const db = getFirestore();
@@ -189,8 +205,7 @@ export const POST = withErrorHandler(
     }
 
     return jsonSuccess({ success: true, link: { id: linkId, ...linkData } }, 201);
-  })
-);
+});
 
 export const DELETE = withErrorHandler(async (request) => {
   const { payload } = await requireAdmin(request);
@@ -201,15 +216,19 @@ export const DELETE = withErrorHandler(async (request) => {
     studentId: url.searchParams.get("studentId"),
   };
 
+  if (!queryParams.parentId || !queryParams.studentId) {
+    return jsonError("Missing parentId or studentId parameters", 400);
+  }
+
   const validation = deleteParentStudentLinkSchema.safeParse(queryParams);
   if (!validation.success) {
     return jsonError({
       message: "Validation failed",
-      details: validation.error.errors.map((issue) => ({
+      details: validation.error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,
       })),
-    }, 422);
+    }, 400);
   }
 
   const { parentId, studentId } = validation.data;

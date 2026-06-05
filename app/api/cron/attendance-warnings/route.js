@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/cronAuth";
 import { connectDb } from "@/lib/mongodb";
 import { evaluateStudentAttendance } from "@/lib/attendanceUtils";
+import { initializeFirebase } from "@/lib/firebase-admin";
+import admin from "firebase-admin";
 
 export const dynamic = "force-dynamic";
 

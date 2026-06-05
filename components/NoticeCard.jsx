@@ -126,15 +126,6 @@ const createPdfDownload = (notice) => {
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
   const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
   const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const dateStr = createdAt.toLocaleDateString([], {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const timeStr = createdAt.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
   doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);

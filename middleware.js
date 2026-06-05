@@ -37,7 +37,7 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-let redisClient;
+
 
 function getRedis() {
   if (!redisClient) {
@@ -67,6 +67,7 @@ const PUBLIC_API_PATHS = [
   "/api/auth/reset-password",
   "/api/health",
 ];
+
 
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
@@ -447,7 +448,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
