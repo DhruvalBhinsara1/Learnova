@@ -378,10 +378,6 @@ export default async function RootLayout({ children }) {
             
             {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
             <ShortcutsModal />
-            <CommandPaletteWrapper />
-
-            {/* 🚀 ADDED: System Shortcuts Modal integration layer */}
-            <ShortcutsModal />
           </Suspense>
         </AllProviders>
         </NextIntlClientProvider>
