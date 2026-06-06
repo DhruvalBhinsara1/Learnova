@@ -2,10 +2,12 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-global.fetch = jest.fn();
+import { vi } from "vitest";
+
+global.fetch = vi.fn();
 
 const mockUser = {
-  getIdToken: jest.fn().mockResolvedValue("mock-token"),
+  getIdToken: vi.fn().mockResolvedValue("mock-token"),
 };
 
 jest.mock("@/hooks/useAuth", () => ({

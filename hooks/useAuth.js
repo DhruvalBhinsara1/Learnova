@@ -125,6 +125,14 @@ export const useAuth = () => {
   const unsubscribeSnapshotRef = useRef(null);
   const firstSnapshotReceivedRef = useRef(false);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  const isMounted = useCallback(() => isMountedRef.current, []);
+
   const handleSessionExpired = useCallback(() => {
     if (!isMounted()) return;
     setSessionExpired(true);

@@ -3,10 +3,15 @@ import { render, screen } from "@testing-library/react";
 import AchievementSection from "../AchievementSection";
 import toast from "react-hot-toast";
 
-jest.mock("react-hot-toast", () => ({
+import { vi } from "vitest";
+
+vi.mock("react-hot-toast", () => ({
 __esModule: true,
 default: {
-success: jest.fn(),
+success: vi.fn(),
+error: vi.fn(),
+loading: vi.fn(),
+dismiss: vi.fn(),
 },
 }));
 

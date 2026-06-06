@@ -37,17 +37,7 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-let redisClient;
 
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
@@ -60,7 +50,61 @@ const AUTH_RATE_LIMITED_PATHS = [
   "/api/auth/reset-password",
   "/api/auth/verify-email",
   "/api/auth/verify-otp",
+  "/api/auth/verify-otp/callback",
 ];
+
+function isAuthRoute(pathname) {
+  const normalizedPath = pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+  return AUTH_RATE_LIMITED_PATHS.includes(normalizedPath) || AUTH_RATE_LIMITED_PATHS.includes(pathname);
+}
+
+let lastCleanupTime = Date.now();
+function cleanupRateLimitMap() {
+  const now = Date.now();
+  if (now - lastCleanupTime > 60 * 1000) {
+    for (const [key, val] of devRateLimitMap.entries()) {
+      if (val.resetTime < now) {
+        devRateLimitMap.delete(key);
+      }
+    }
+    lastCleanupTime = now;
+  }
+}
+
+async function rateLimit(ip, pathname, request) {
+  const redis = getRedisClient();
+  const now = Date.now();
+  if (redis) {
+    try {
+      const key = `ratelimit:${pathname}:${ip}`;
+      const requests = await redis.incr(key);
+      if (requests === 1) {
+        await redis.pexpire(key, RATE_LIMIT_WINDOW_MS);
+      }
+      return {
+        allowed: requests <= RATE_LIMIT_MAX,
+        remaining: Math.max(0, RATE_LIMIT_MAX - requests),
+        retryAfter: requests > RATE_LIMIT_MAX ? Math.ceil(RATE_LIMIT_WINDOW_MS / 1000) : 0,
+      };
+    } catch {
+      // fallback
+    }
+  }
+
+  const key = `${pathname}:${ip}`;
+  const record = devRateLimitMap.get(key) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW_MS };
+  if (now > record.resetTime) {
+    record.count = 0;
+    record.resetTime = now + RATE_LIMIT_WINDOW_MS;
+  }
+  record.count += 1;
+  devRateLimitMap.set(key, record);
+  return {
+    allowed: record.count <= RATE_LIMIT_MAX,
+    remaining: Math.max(0, RATE_LIMIT_MAX - record.count),
+    retryAfter: record.count > RATE_LIMIT_MAX ? Math.ceil((record.resetTime - now) / 1000) : 0,
+  };
+}
 
 const PUBLIC_API_PATHS = [
   "/api/auth/csrf",
@@ -363,7 +407,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
