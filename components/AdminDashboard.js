@@ -421,7 +421,7 @@ const SuperAdminDashboard = () => {
               <input
                 type="text"
                 value={linkSearchQuery}
-                onChange={(e) => setLinkSearchQuery(e.target.value)}
+                onChange={(e) => { const val = e.target.value; setLinkSearchQuery(val); }}
                 placeholder="Search parent/student..."
                 className="w-full bg-black/40 border border-white/15 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-colors"
               />
