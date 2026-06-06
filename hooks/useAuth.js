@@ -196,6 +196,7 @@ export const useAuth = () => {
             },
             (snapError) => {
               console.warn("Profile snapshot subscription error:", snapError.message);
+              setError("Failed to sync your profile data.");
               if (!firstSnapshotReceivedRef.current) {
                 firstSnapshotReceivedRef.current = true;
                 setProfileLoading(false);
