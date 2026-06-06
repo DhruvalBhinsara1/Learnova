@@ -1,23 +1,7 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
-
-let redisClient;
-
-function getRedisClient() {
-  if (
-    !redisClient &&
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -36,18 +20,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
-
-let redisClient;
-
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
@@ -370,7 +342,7 @@ export async function middleware(request) {
       request.headers.get("x-session-id");
     if (sessionId) {
       try {
-        const redis = getRedisClient();
+        const redis = getRedis();
         if (redis) {
           const exists = await redis.exists(`session:${sessionId}`);
           if (exists !== 1) {
