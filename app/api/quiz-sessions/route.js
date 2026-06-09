@@ -1,24 +1,12 @@
-/**
- * app/api/quiz-sessions/route.js
- *
- * Server-side quiz session API endpoint.
- * All quiz answers and progress stored server-side in secure sessions.
- * Client only holds sessionId token.
- *
- * Prevents XSS attacks from modifying answers via localStorage.
- */
-
 import { connectDb } from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
+import { requireAuth } from "@/lib/rbac";
 
-const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
+const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
-/**
- * POST /api/quiz-sessions/create
- * Create a new quiz session
- */
 export async function POST(req) {
   try {
+    const decodedToken = await requireAuth(req);
     const { quizId } = await req.json();
 
     if (!quizId) {
@@ -30,7 +18,6 @@ export async function POST(req) {
 
     const db = await connectDb();
 
-    // Get quiz metadata
     const quiz = await db.collection("quizzes").findOne({ _id: quizId });
     if (!quiz) {
       return new Response(JSON.stringify({ error: "Quiz not found" }), {
@@ -39,17 +26,17 @@ export async function POST(req) {
       });
     }
 
-    // Create session (simplified - in production use authenticated user ID)
     const sessionId = uuidv4();
     const expiresAt = new Date(Date.now() + SESSION_TIMEOUT_MS);
 
     const session = {
       _id: sessionId,
       quizId,
+      firebaseUid: decodedToken.uid,
       createdAt: new Date(),
       expiresAt,
-      answers: {}, // Map of questionId -> answer
-      answeredAt: {}, // Map of questionId -> timestamp
+      answers: {},
+      answeredAt: {},
       completed: false,
       submittedAt: null,
     };
@@ -64,7 +51,12 @@ export async function POST(req) {
       { status: 201, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Quiz session creation error:", error);
+    if (error.statusCode === 401 || error.name === "AuthenticationError") {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ error: "Failed to create session" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -72,12 +64,9 @@ export async function POST(req) {
   }
 }
 
-/**
- * POST /api/quiz-sessions/[sessionId]/answer
- * Submit an answer to a quiz question
- */
 export async function submitAnswer(req, sessionId) {
   try {
+    const decodedToken = await requireAuth(req);
     const { questionId, answer, timestamp } = await req.json();
 
     if (!sessionId || !questionId || answer === undefined) {
@@ -89,13 +78,19 @@ export async function submitAnswer(req, sessionId) {
 
     const db = await connectDb();
 
-    // Validate session exists and not expired
     const session = await db
       .collection("quiz_sessions")
       .findOne({ _id: sessionId });
     if (!session) {
       return new Response(JSON.stringify({ error: "Session not found" }), {
         status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (session.firebaseUid && session.firebaseUid !== decodedToken.uid) {
+      return new Response(JSON.stringify({ error: "Not authorized to answer this session" }), {
+        status: 403,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -114,7 +109,6 @@ export async function submitAnswer(req, sessionId) {
       });
     }
 
-    // Validate question exists in quiz
     const quiz = await db
       .collection("quizzes")
       .findOne({ _id: session.quizId });
@@ -127,7 +121,6 @@ export async function submitAnswer(req, sessionId) {
       );
     }
 
-    // Store answer server-side
     await db.collection("quiz_sessions").updateOne(
       { _id: sessionId },
       {
@@ -146,7 +139,12 @@ export async function submitAnswer(req, sessionId) {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Answer submission error:", error);
+    if (error.statusCode === 401 || error.name === "AuthenticationError") {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ error: "Failed to submit answer" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -154,21 +152,24 @@ export async function submitAnswer(req, sessionId) {
   }
 }
 
-/**
- * POST /api/quiz-sessions/[sessionId]/submit
- * Submit completed quiz and calculate score
- */
 export async function submitQuiz(req, sessionId) {
   try {
+    const decodedToken = await requireAuth(req);
     const db = await connectDb();
 
-    // Validate session
     const session = await db
       .collection("quiz_sessions")
       .findOne({ _id: sessionId });
     if (!session) {
       return new Response(JSON.stringify({ error: "Session not found" }), {
         status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (session.firebaseUid && session.firebaseUid !== decodedToken.uid) {
+      return new Response(JSON.stringify({ error: "Not authorized to submit this session" }), {
+        status: 403,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -187,12 +188,10 @@ export async function submitQuiz(req, sessionId) {
       });
     }
 
-    // Get quiz for grading
     const quiz = await db
       .collection("quizzes")
       .findOne({ _id: session.quizId });
 
-    // Grade answers
     let correctCount = 0;
     for (const question of quiz.questions) {
       const studentAnswer = session.answers[question._id];
@@ -204,7 +203,6 @@ export async function submitQuiz(req, sessionId) {
     const percentage = Math.round((correctCount / quiz.questions.length) * 100);
     const passed = percentage >= (quiz.passingScore || 70);
 
-    // Mark session as completed
     const submittedAt = new Date();
     await db.collection("quiz_sessions").updateOne(
       { _id: sessionId },
@@ -232,7 +230,12 @@ export async function submitQuiz(req, sessionId) {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Quiz submission error:", error);
+    if (error.statusCode === 401 || error.name === "AuthenticationError") {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ error: "Failed to submit quiz" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

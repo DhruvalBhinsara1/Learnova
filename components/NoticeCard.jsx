@@ -124,6 +124,8 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
+  const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+  const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const dateStr = createdAt.toLocaleDateString([], {
     month: "short",
     day: "numeric",
@@ -194,18 +196,15 @@ const createPdfDownload = (notice) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10.5);
   doc.setTextColor(51, 65, 85); // Slate-700
-  
+
   // ── FIX FOR ISSUE #2007: Safe text extraction and fallback ──
   const rawContent = notice.content || notice.text;
-  const safeContent = (typeof rawContent === "string" && rawContent.trim().length > 0) 
-    ? rawContent 
+  const safeContent = (typeof rawContent === "string" && rawContent.trim().length > 0)
+    ? rawContent
     : "No text content provided for this notice.";
   // ────────────────────────────────────────────────────────────
 
   const lines = doc.splitTextToSize(safeContent, contentWidth);
-
-
-  const lines = doc.splitTextToSize(notice.content || "", contentWidth);
   const lineHeight = 6.5;
 
   lines.forEach((line) => {
@@ -317,15 +316,42 @@ const NoticeCard = ({
     ].join("\n");
 
     try {
+      // FIX FOR ISSUE #2006: Add toast confirmation on success
       await navigator.clipboard.writeText(mdText);
       setCopyFeedback(true);
+      toast.success('Notice link copied to clipboard!');
       setTimeout(() => setCopyFeedback(false), 2000);
     } catch (err) {
       console.error("Failed to copy markdown to clipboard", err);
+      // Fallback UI/UX error handling
+      toast.error('Failed to copy. Check browser permissions.');
+    }
+  }, [notice]);
+
+  const handleCopyLink = useCallback(async () => {
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
+
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
+
+      setCopyFeedback(true);
+
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice link", err);
     }
   }, [notice]);
 
   const handleShareNotice = useCallback(async () => {
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
     if (
       typeof navigator !== "undefined" &&
       typeof navigator.share === "function"
@@ -333,7 +359,8 @@ const NoticeCard = ({
       try {
         await navigator.share({
           title: notice.title || "Notice",
-          text: exportText,
+          text: notice.content || "",
+          url: noticeUrl,
         });
         return;
       } catch (error) {
@@ -342,9 +369,16 @@ const NoticeCard = ({
         }
       }
     }
-
-    handleExportNotice();
-  }, [exportText, handleExportNotice, notice.title]);
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
+      setCopyFeedback(true);
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice URL", err);
+    }
+  }, [notice]);
 
   return (
     <motion.article
@@ -396,9 +430,8 @@ const NoticeCard = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
-            className={`text-xl font-semibold transition ${
-              isRead ? "text-slate-200" : "text-white"
-            }`}
+            className={`text-xl font-semibold transition ${isRead ? "text-slate-200" : "text-white"
+              }`}
           >
             {highlightMatch(notice.title, searchQuery)}
           </motion.h3>
@@ -410,11 +443,10 @@ const NoticeCard = ({
             onClick={onToggleRead}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
-              isRead
-                ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-                : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
-            }`}
+            className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${isRead
+              ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+              : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
+              }`}
             aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
           >
             {isRead ? (
@@ -463,6 +495,18 @@ const NoticeCard = ({
 
           <motion.button
             type="button"
+            onClick={handleCopyLink}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-3xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/20 active:scale-95"
+            aria-label={`Copy link for ${notice.title || "notice"}`}
+          >
+            <Copy className="h-4 w-4" />
+            Copy Link
+          </motion.button>
+
+          <motion.button
+            type="button"
             onClick={handleShareNotice}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -503,6 +547,57 @@ const NoticeCard = ({
         ))}
       </motion.div>
 
+      {/* Attachments — feat #2184: rich media support */}
+      {notice.attachments?.length > 0 && (
+        <div className="mt-5 space-y-3">
+          <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+            Attachments
+          </p>
+          {notice.attachments.map((att, i) => (
+            <div key={i}>
+              {att.type === "link" ? (
+                
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-sky-400 hover:underline break-all"
+                >
+                  🔗 {att.name}
+                </a>
+              ) : att.type?.startsWith("image/") ? (
+                
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    src={att.url}
+                    alt={att.name}
+                    className="rounded-xl max-h-48 w-full object-cover border border-slate-700 hover:opacity-90 transition"
+                  />
+                </a>
+              ) : att.type === "application/pdf" ? (
+                <div className="rounded-xl overflow-hidden border border-slate-700">
+                  <iframe
+                    src={att.url}
+                    title={att.name}
+                    className="w-full h-48"
+                  />
+                  
+                    href={att.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition"
+                  >
+                    📄 {att.name} — Open PDF
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -527,5 +622,4 @@ const NoticeCard = ({
   );
 };
 
-export default NoticeCard;
 export default NoticeCard;

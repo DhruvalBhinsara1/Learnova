@@ -1,7 +1,7 @@
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { withErrorHandler, parseJSON } from "@/lib/error-handler";
-import { requireParent, requireRole } from "@/lib/rbac";
-import { initFirebaseAdmin } from "@/lib/firebase-admin";
+import { requireAuth } from "@/lib/rbac";
+import { initFirebaseAdmin, getUserProfile } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { connectDb } from "@/lib/mongodb";
 
@@ -52,7 +52,7 @@ const SAMPLE_GRADES = [
 ];
 
 export const GET = withErrorHandler(async (request, context) => {
-  const { payload: decodedToken } = await requireParent(request);
+  const decodedToken = await requireAuth(request);
   const parentId = decodedToken.uid;
   const { studentId } = context.params;
 
@@ -101,17 +101,56 @@ export const GET = withErrorHandler(async (request, context) => {
 
   return jsonSuccess({ grades }, 200);
 });
-export const POST = withErrorHandler(async (request) => {
+
+export const POST = withErrorHandler(async (request, context) => {
   // Let admins or teachers add grades
-  const { payload: decodedToken, profile } = await requireRole(request, [
-    "admin",
-    "teacher",
-  ]);
+  const decodedToken = await requireAuth(request);
+  const profile = await getUserProfile(decodedToken.uid);
   const body = await parseJSON(request, 1024 * 5);
   const { studentId, subject, grade, score, maxScore, term, date } = body;
 
   if (!studentId || !subject || !grade || score === undefined) {
     return jsonError("Missing required grade fields", 400);
+  }
+
+  let routeStudentId = context?.params?.studentId;
+  if (!routeStudentId && request.url) {
+    const match = request.url.match(/\/student\/([^/]+)\/grades/);
+    if (match) {
+      routeStudentId = match[1];
+    }
+  }
+
+  const targetStudentId = routeStudentId || studentId;
+
+  const student = await getUserProfile(targetStudentId);
+  if (!student) {
+    return jsonError("Student not found", 404);
+  }
+  if (student.role !== "student") {
+    return jsonError("Target user is not a student", 400);
+  }
+
+  if (routeStudentId && studentId !== routeStudentId) {
+    return jsonError("Student ID mismatch in request path and body", 400);
+  }
+
+  const userInstituteId =
+    profile?.instituteId ||
+    (profile?.role === "institute" ? profile?.uid : null);
+
+  if (userInstituteId) {
+    if (student.instituteId !== userInstituteId) {
+      return jsonError(
+        "Forbidden: You are not authorized to access records from another institute.",
+        403
+      );
+    }
+  } else if (profile?.role !== "admin") {
+    return jsonError(
+      "Forbidden: User profile missing institute affiliation.",
+      403
+    );
   }
 
   initFirebaseAdmin();

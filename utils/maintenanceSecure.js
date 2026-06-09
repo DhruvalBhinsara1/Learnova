@@ -12,21 +12,28 @@
  */
 
 import crypto from 'crypto';
-import { createLogger } from './logger';
+import loggerInstance from './logger';
 
-const logger = createLogger('maintenance-security');
+const logger = loggerInstance;
 
 /**
  * Maintenance Security Configuration
  * All values must come from environment variables
  */
+function getTokenExpiryMinutes() {
+  return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || '60', 10);
+}
+
 const MAINTENANCE_CONFIG = {
-  // Token expiration in minutes
-  TOKEN_EXPIRY_MINUTES: parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || '60'),
-  // Maximum bypass attempts per hour before lockout
-  MAX_BYPASS_ATTEMPTS_PER_HOUR: parseInt(process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR || '10'),
-  // Admin role requirement check
-  REQUIRE_ADMIN_ROLE: process.env.MAINTENANCE_REQUIRE_ADMIN_ROLE === 'true',
+  get TOKEN_EXPIRY_MINUTES() {
+    return parseInt(process.env.MAINTENANCE_TOKEN_EXPIRY_MINUTES || '60');
+  },
+  get MAX_BYPASS_ATTEMPTS_PER_HOUR() {
+    return parseInt(process.env.MAINTENANCE_MAX_ATTEMPTS_PER_HOUR || '10');
+  },
+  get REQUIRE_ADMIN_ROLE() {
+    return process.env.MAINTENANCE_REQUIRE_ADMIN_ROLE === 'true';
+  },
 };
 
 /**
@@ -43,7 +50,7 @@ const bypassAttemptLog = new Map();
  */
 export function generateBypassToken() {
   const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + MAINTENANCE_CONFIG.TOKEN_EXPIRY_MINUTES * 60 * 1000);
+  const expiresAt = new Date(Date.now() + getTokenExpiryMinutes() * 60 * 1000);
 
   bypassTokenStore.set(token, {
     createdAt: new Date(),
@@ -53,13 +60,13 @@ export function generateBypassToken() {
 
   logger.info('Generated new maintenance bypass token', {
     expiresAt: expiresAt.toISOString(),
-    expiryMinutes: MAINTENANCE_CONFIG.TOKEN_EXPIRY_MINUTES,
+    expiryMinutes: getTokenExpiryMinutes(),
   });
 
   return {
     token,
     expiresAt: expiresAt.toISOString(),
-    expiryMinutes: MAINTENANCE_CONFIG.TOKEN_EXPIRY_MINUTES,
+    expiryMinutes: getTokenExpiryMinutes(),
   };
 }
 

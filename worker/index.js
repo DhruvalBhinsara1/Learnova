@@ -1,4 +1,19 @@
 import { processSyncQueue } from "../services/syncQueue";
+import { BackgroundSyncPlugin } from "workbox-background-sync";
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
+
+const bgSyncPlugin = new BackgroundSyncPlugin("attendance-queue", {
+  maxRetentionTime: 24 * 60, // Retry for max of 24 Hours (specified in minutes)
+});
+
+registerRoute(
+  /\/api\/attendance\/record/,
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  "POST"
+);
 
 let csrfTokenCache = null; // { token: string, fetchedAt: number }
 let csrfTokenPromise = null;
@@ -73,9 +88,18 @@ async function swFetchWithCsrf(url, options = {}) {
   const headers = new Headers(options.headers || {});
 
   if (isUnsafeMethod(method) && isSameOriginApiUrl(url)) {
-    if (!headers.has("x-csrf-token") && !headers.has("X-CSRF-Token")) {
+    const existingToken =
+      headers.get("x-csrf-token") ||
+      headers.get("x-xsrf-token") ||
+      headers.get("x-csrftoken");
+
+    if (!existingToken) {
       const token = await getCsrfToken();
-      if (token) headers.set("X-CSRF-Token", token);
+      if (token) headers.set("x-csrf-token", token);
+    } else {
+      if (!headers.has("x-csrf-token")) {
+        headers.set("x-csrf-token", existingToken);
+      }
     }
   }
 

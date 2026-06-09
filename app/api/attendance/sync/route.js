@@ -185,14 +185,14 @@ async function handleSync(request) {
       steps: [
         {
           name: "write_attendance",
-          execute: async () => {
+          execute: async (ctx) => {
             const newDocRef = db
               .collection("attendance_records")
               .doc(`${decodedToken.uid}_${recordDate}`);
             await db.runTransaction(async (transaction) => {
               const existingAttendance = await transaction.get(newDocRef);
               if (existingAttendance.exists) {
-                // Already recorded — skip write but don't throw (idempotent)
+                ctx._alreadyProcessed = true;
                 return;
               }
 
@@ -214,7 +214,8 @@ async function handleSync(request) {
         },
         {
           name: "write_mongodb_attendance",
-          execute: async () => {
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
             const mongoDB = await connectDb();
             await mongoDB.collection("attendance").updateOne(
               { userId: decodedToken.uid, date: recordDate },
@@ -244,11 +245,13 @@ async function handleSync(request) {
         },
         {
           name: "award_xp",
-          execute: async () => {
+          execute: async (ctx) => {
+            if (ctx._alreadyProcessed) return;
             await awardXp(decodedToken.uid, "attendance_marked", {
               attendanceHour: record.queuedAt
                 ? new Date(record.queuedAt).getHours()
                 : new Date().getHours(),
+              attendanceDate: new Date(record.queuedAt),
             });
           },
           compensate: null, // XP is a side-effect; failure doesn't block attendance

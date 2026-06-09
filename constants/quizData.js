@@ -124,6 +124,67 @@ export const quizDatabase = {
       },
     ],
   },
+  "Grammar Galaxy": {
+    category: "language",
+    level: "elementary",
+    timeLimit: 90, // 1.5 minutes
+    questions: [
+      {
+        id: 1,
+        question: "Which of the following is a proper noun?",
+        options: ["city", "dog", "Alice", "happiness"],
+        answer: 2, // Alice
+      },
+      {
+        id: 2,
+        question: "Identify the verb in the sentence: 'She runs every morning.'",
+        options: ["She", "runs", "every", "morning"],
+        answer: 1, // runs
+      },
+      {
+        id: 3,
+        question:
+          "Which sentence is grammatically correct?",
+        options: [
+          "He don't like pizza.",
+          "They is going to the park.",
+          "She has a cat.",
+          "We was late to the party.",
+        ],
+        answer: 2, // She has a cat.
+      },
+    ], 
+  },
+  "Junior Coding Quest": {
+    category: "coding",
+    level: "elementary",
+    timeLimit: 90, // 1.5 minutes
+    questions: [
+      {
+        id: 1,
+        question: "What is the correct syntax for defining a variable in JavaScript?",
+        options: ["var myVar = 5;", "variable myVar = 5;", "let myVar = 5;", "const myVar = 5;"],
+        answer: 2, // let myVar = 5;
+      },
+      {
+        id: 2,
+        question: "Which of the following is NOT a valid data type in JavaScript?",
+        options: ["string", "boolean", "integer", "undefined"],
+        answer: 2, // integer
+      },
+      {
+        id: 3,
+        question: "What does the '===' operator do in JavaScript?",
+        options: [
+          "Assigns a value to a variable",
+          "Checks for equality without type coercion",
+          "Checks for equality with type coercion",
+          "Checks if a variable is defined"
+        ],
+        answer: 1, // Checks for equality without type coercion
+      }
+    ]
+  }
 };
 
 /**
