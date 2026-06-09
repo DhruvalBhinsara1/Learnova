@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast"; // or whatever toast library you're using
 import { useAuth } from "@/hooks/useAuth";
+import { apiFetch } from "@/lib/apiClient";
 import {
   AlertCircle,
   MapPin,
@@ -42,15 +43,134 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     currentLocation: null, // Add this field
   });
 
+  const modalContainerRef = useRef(null);
+  const triggerElementRef = useRef(null);
+  const componentMounted = useRef(true);
+
+  useEffect(() => {
+    componentMounted.current = true;
+    return () => {
+      componentMounted.current = false;
+    };
+  }, []);
+
+  // Close exception modal on Escape key press
+  useEffect(() => {
+    if (!showExceptionModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setShowExceptionModal(false);
+        setExceptionForm({
+          reason: "",
+          details: "",
+          studentId: "",
+          studentName: "",
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showExceptionModal]);
+
+  // Trap focus and restore focus on close for exception modal
+  useEffect(() => {
+    if (showExceptionModal) {
+      // Save trigger element for focus restoration on close
+      if (!triggerElementRef.current) {
+        triggerElementRef.current = document.activeElement;
+      }
+
+      // Shift focus inside modal initially after paint
+      const focusTimer = setTimeout(() => {
+        if (modalContainerRef.current) {
+          const focusableElements = modalContainerRef.current.querySelectorAll(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableElements.length > 0) {
+            focusableElements[0].focus();
+          }
+        }
+      }, 50);
+
+      const handleTabTrap = (e) => {
+        if (e.key !== "Tab") return;
+        if (!modalContainerRef.current) return;
+
+        const focusableElements = modalContainerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleTabTrap);
+      return () => {
+        window.removeEventListener("keydown", handleTabTrap);
+        clearTimeout(focusTimer);
+      };
+    } else {
+      // Restore focus on close
+      const target = triggerElementRef.current;
+      const restoreFocus = () => {
+        let activeTarget = target;
+        if (
+          !activeTarget ||
+          activeTarget === document.body ||
+          !document.body.contains(activeTarget)
+        ) {
+          const buttons = Array.from(document.querySelectorAll("button"));
+          activeTarget =
+            buttons.find((btn) =>
+              btn.getAttribute("class")?.includes("border-orange-500")
+            ) ||
+            buttons.find((btn) =>
+              btn.textContent.includes("Request Exception")
+            );
+        }
+        if (activeTarget && typeof activeTarget.focus === "function") {
+          activeTarget.focus();
+        }
+      };
+
+      // Run synchronously for standard browser flows
+      restoreFocus();
+      // Run asynchronously as backup to bypass JSDOM unmount focus resets after React batching settles
+      const restoreTimer = setTimeout(restoreFocus, 50);
+
+      triggerElementRef.current = null;
+      return () => clearTimeout(restoreTimer);
+    }
+  }, [showExceptionModal]);
+
   // Load settings from secure API endpoint (with error handling & retry)
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!user) return;
     setSettingsLoading(true);
     setSettingsError(null);
 
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/settings", {
+      const response = await apiFetch("/api/attendance/settings", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -58,7 +178,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(`HTTP ${response.status} ${response.statusText} ${text}`);
+        throw new Error(
+          `HTTP ${response.status} ${response.statusText} ${text}`
+        );
       }
 
       const settingsData = await response.json();
@@ -69,16 +191,18 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       console.error("Error loading attendance settings:", error);
       setSettings(null);
       setSettingsError(error?.message || "Unknown error");
-      toast.error("Unable to load attendance settings. Check console for details.");
+      toast.error(
+        "Unable to load attendance settings. Check console for details."
+      );
     } finally {
       setSettingsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
     fetchSettings();
-  }, [user]);
+  }, [user, fetchSettings]);
 
   const getTimeWindowStatus = (timeWindow) => {
     if (!timeWindow) {
@@ -91,8 +215,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     const currentTime = now.toTimeString().slice(0, 5);
 
     const isValid =
-      currentTime >= timeWindow.start &&
-      currentTime <= timeWindow.end;
+      currentTime >= timeWindow.start && currentTime <= timeWindow.end;
 
     return {
       isValid,
@@ -107,7 +230,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
   // Live countdown timer for the attendance window
   useEffect(() => {
-    if (!settings?.timeWindow) return;
+    if (!settings?.timeWindow) {
+      return undefined;
+    }
 
     const updateTimer = () => {
       const { start, end } = settings.timeWindow;
@@ -154,8 +279,12 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     updateTimer(); // run immediately
     const intervalId = setInterval(updateTimer, 1000); // update every second
 
-    return () => clearInterval(intervalId);
-  }, [settings]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [settings?.timeWindow, settings?.gpsLocation]);
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3;
@@ -193,13 +322,15 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         });
       });
 
+      if (!componentMounted.current) return;
+
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
       const distance = calculateDistance(
         userLat,
         userLng,
         settings.gpsLocation.lat,
-        settings.gpsLocation.lng,
+        settings.gpsLocation.lng
       );
 
       const locationData = {
@@ -218,32 +349,36 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       } else {
         setLocationError(
           `You are ${Math.round(
-            distance,
-          )}m away from the valid location. You need to be within ${settings.gpsLocation.radius
-          }m to proceed.`,
+            distance
+          )}m away from the valid location. You need to be within ${
+            settings.gpsLocation.radius
+          }m to proceed.`
         );
       }
     } catch (error) {
+      if (!componentMounted.current) return;
       setRetryCount((prev) => prev + 1);
 
       if (error.code === 1) {
         setLocationDenied(true);
         setLocationError(
-          "Location access was denied. Please enable location services in your browser settings and click 'Enable Location' to try again.",
+          "Location access was denied. Please enable location services in your browser settings and click 'Enable Location' to try again."
         );
       } else if (error.code === 2) {
         setLocationError(
-          "Your location is unavailable. Please check your GPS settings and try again.",
+          "Your location is unavailable. Please check your GPS settings and try again."
         );
       } else if (error.code === 3) {
         setLocationError("Location request timed out. Please try again.");
       } else {
         setLocationError(
-          "Unable to retrieve your location. Please ensure location services are enabled and try again.",
+          "Unable to retrieve your location. Please ensure location services are enabled and try again."
         );
       }
     } finally {
-      setIsLoading(false);
+      if (componentMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -255,7 +390,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       });
       if (permission.state === "denied") {
         setLocationError(
-          "Location is permanently blocked. Please go to your browser settings, unblock location for this site, and refresh the page.",
+          "Location is permanently blocked. Please go to your browser settings, unblock location for this site, and refresh the page."
         );
         return;
       }
@@ -273,7 +408,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     setPasscodeError("");
     try {
       const token = await user.getIdToken();
-      const response = await fetch("/api/attendance/validate-passcode", {
+      const response = await apiFetch("/api/attendance/validate-passcode", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -286,7 +421,8 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         setCurrentStep(3);
       } else {
         setPasscodeError(
-          data.error || "Invalid passcode. Please contact your teacher for the correct code."
+          data.error ||
+            "Invalid passcode. Please contact your teacher for the correct code."
         );
       }
     } catch (error) {
@@ -300,7 +436,15 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
     onValidationSuccess();
   };
 
-  const submitTimeExceptionRequest = async () => {
+  const submitTimeExceptionRequest = async (e) => {
+    const target = e?.currentTarget || e?.target || document.activeElement;
+    if (target && target !== document.body) {
+      triggerElementRef.current = target;
+    } else {
+      triggerElementRef.current =
+        document.querySelector('button[class*="border-orange-500"]') ||
+        document.activeElement;
+    }
     setExceptionForm((prev) => ({
       ...prev,
       studentId: user?.email || "",
@@ -321,13 +465,15 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         });
       });
 
+      if (!componentMounted.current) return;
+
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
       const distance = calculateDistance(
         userLat,
         userLng,
         settings.gpsLocation.lat,
-        settings.gpsLocation.lng,
+        settings.gpsLocation.lng
       );
 
       const currentLocationData = {
@@ -345,14 +491,17 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
       toast.success("Current location captured successfully");
     } catch (error) {
+      if (!componentMounted.current) return;
       // In getCurrentLocationForException, add error handling for denied permissions
       if (error.code === 1) {
         toast.error(
-          "Location access denied. Please enable location in browser settings.",
+          "Location access denied. Please enable location in browser settings."
         );
       }
     } finally {
-      setModalLocationLoading(false);
+      if (componentMounted.current) {
+        setModalLocationLoading(false);
+      }
     }
   };
 
@@ -379,7 +528,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
         },
       };
 
-      const response = await fetch("/api/exceptions/create", {
+      const response = await apiFetch("/api/exceptions/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -391,7 +540,7 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       if (response.ok) {
         setShowExceptionModal(false);
         toast.success(
-          "Exception request submitted successfully. Your teacher will review it.",
+          "Exception request submitted successfully. Your teacher will review it."
         );
         setExceptionForm({
           reason: "",
@@ -453,7 +602,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
             )}
           </div>
           <div className="flex items-center justify-center gap-3">
-            <Button onClick={fetchSettings} className="bg-red-600 hover:bg-red-700 text-white">
+            <Button
+              onClick={fetchSettings}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
             </Button>
@@ -497,16 +649,18 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       <div className="space-y-4">
         {/* Time Status */}
         <div
-          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${timeValid
+          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+            timeValid
               ? "border-green-500/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10"
               : "border-red-500/50 bg-gradient-to-r from-red-500/10 to-orange-500/10"
-            }`}
+          }`}
         >
           <div className="p-6">
             <div className="flex items-center gap-4">
               <div
-                className={`p-3 rounded-xl ${timeValid ? "bg-green-500" : "bg-red-500"
-                  }`}
+                className={`p-3 rounded-xl ${
+                  timeValid ? "bg-green-500" : "bg-red-500"
+                }`}
               >
                 <Clock className="w-6 h-6 text-white" />
               </div>
@@ -515,8 +669,9 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   Time Window
                 </h3>
                 <p
-                  className={`text-sm ${timeValid ? "text-green-300" : "text-red-300"
-                    }`}
+                  className={`text-sm ${
+                    timeValid ? "text-green-300" : "text-red-300"
+                  }`}
                 >
                   {timeValid
                     ? `✅ Perfect timing! Valid window: ${settings.timeWindow.start} - ${settings.timeWindow.end}`
@@ -524,10 +679,11 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                 </p>
                 {countdownText && (
                   <div
-                    className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${timeValid
+                    className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wider ${
+                      timeValid
                         ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
                         : "bg-red-500/20 text-red-300 border border-red-500/30"
-                      }`}
+                    }`}
                   >
                     <Clock className="w-3.5 h-3.5" />
                     <span>{countdownText}</span>
@@ -545,22 +701,24 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
 
         {/* Location Status */}
         <div
-          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${location?.isValid
+          className={`relative overflow-hidden rounded-2xl border-2 transition-all duration-300 ${
+            location?.isValid
               ? "border-green-500/50 bg-gradient-to-r from-green-500/10 to-emerald-500/10"
               : location && !location.isValid
                 ? "border-red-500/50 bg-gradient-to-r from-red-500/10 to-orange-500/10"
                 : "border-gray-500/50 bg-gradient-to-r from-gray-500/10 to-slate-500/10"
-            }`}
+          }`}
         >
           <div className="p-6">
             <div className="flex items-center gap-4">
               <div
-                className={`p-3 rounded-xl ${location?.isValid
+                className={`p-3 rounded-xl ${
+                  location?.isValid
                     ? "bg-green-500"
                     : location && !location.isValid
                       ? "bg-red-500"
                       : "bg-gray-500"
-                  }`}
+                }`}
               >
                 <MapPin className="w-6 h-6 text-white" />
               </div>
@@ -569,12 +727,13 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   GPS Location
                 </h3>
                 <p
-                  className={`text-sm ${location?.isValid
+                  className={`text-sm ${
+                    location?.isValid
                       ? "text-green-300"
                       : location && !location.isValid
                         ? "text-red-300"
                         : "text-gray-300"
-                    }`}
+                  }`}
                 >
                   {location?.isValid
                     ? `✅ Perfect! You are ${location.distance}m from the institution`
@@ -702,13 +861,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
             type="password"
             value={passcode}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "");
-              setPasscode(val);
+              setPasscode(e.target.value);
             }}
             placeholder="• • • • • •"
             className="w-full bg-white/5 border-2 border-white/20 rounded-2xl px-8 py-6 text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/50 focus:border-purple-500 text-center text-3xl tracking-[0.5em] font-bold transition-all duration-300"
-            maxLength={8}
-            onKeyPress={(e) => e.key === "Enter" && validatePasscode()}
+            required
+            minLength={8}
+            maxLength={128}
+            onKeyDown={(e) => e.key === "Enter" && validatePasscode()}
           />
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 pointer-events-none"></div>
         </div>
@@ -854,12 +1014,13 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
               {[1, 2, 3].map((step) => (
                 <div key={step} className="flex items-center">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${step <= currentStep
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${
+                      step <= currentStep
                         ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-110"
                         : step === currentStep + 1
                           ? "bg-gray-600 text-gray-300 scale-105"
                           : "bg-gray-700 text-gray-500"
-                      }`}
+                    }`}
                   >
                     {step < currentStep ? (
                       <CheckCircle className="w-6 h-6" />
@@ -869,10 +1030,11 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   </div>
                   {step < 3 && (
                     <div
-                      className={`w-16 h-1 mx-2 transition-all duration-500 rounded-full ${step < currentStep
+                      className={`w-16 h-1 mx-2 transition-all duration-500 rounded-full ${
+                        step < currentStep
                           ? "bg-gradient-to-r from-purple-500 to-pink-500"
                           : "bg-gray-700"
-                        }`}
+                      }`}
                     ></div>
                   )}
                 </div>
@@ -931,7 +1093,10 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
       {/* Exception Request Modal */}
       {showExceptionModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full">
+          <div
+            ref={modalContainerRef}
+            className="bg-gray-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl shadow-2xl max-w-md w-full"
+          >
             <div className="p-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -982,10 +1147,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label
+                    htmlFor="exception-reason"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Reason for Exception
                   </label>
                   <select
+                    id="exception-reason"
                     value={exceptionForm.reason}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({
@@ -1010,10 +1179,14 @@ const AttendanceValidation = ({ onValidationSuccess }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-200 mb-2">
+                  <label
+                    htmlFor="exception-details"
+                    className="block text-xs font-semibold text-gray-200 mb-2"
+                  >
                     Additional Details
                   </label>
                   <textarea
+                    id="exception-details"
                     value={exceptionForm.details}
                     onChange={(e) =>
                       setExceptionForm((prev) => ({

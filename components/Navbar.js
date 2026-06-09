@@ -2,123 +2,72 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from "react";
-
-import Image from "next/image";
-
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Activity, Menu, X, User, Settings, Sparkles, Search, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-import { useNotifications } from "@/hooks/useNotifications";
-
-import { useTheme } from "next-themes";
-
 import { useAuthContext } from "@/contexts/AuthContext";
-import { useTranslation } from "react-i18next";
-import "@/lib/i18n";
-
-const languageMap = {
-  "English": "en",
-  "Español": "es",
-  "Français": "fr",
-  "Deutsch": "de",
-  "हिन्दी": "hi"
-};
+import { motion, AnimatePresence } from "framer-motion";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 import {
-  Menu,
-  X,
-  BookOpen,
-  ChevronDown,
-  User,
-  Activity,
-  LogOut,
-  Settings,
-  Sparkles,
-  Home,
-  Mail,
-  Bell,
-  UserCheck,
-  Sun,
-  Moon,
-  Keyboard,
-  Languages, // Added for the translation button icon
-  Search,
-} from "lucide-react";
+  NAVIGATION_ITEMS,
+  getDashboardLink,
+  isRouteActive,
+  isDashboardRoute,
+} from "@/lib/navigation";
+import NavLink from "@/components/navigation/NavLink";
+import NavbarBrand from "@/components/navigation/NavbarBrand";
+import Sidebar from "@/components/navigation/Sidebar";
+import MobileNavDrawer from "@/components/navigation/MobileNavDrawer";
+import NotificationPanel from "@/components/navigation/NotificationPanel";
+import UserMenu from "@/components/navigation/UserMenu";
+import {
+  getNavbarGlassStyle,
+  gradientBorderTop,
+  iconBtnClass,
+  navCapsuleClass,
+} from "@/components/navigation/glassStyles";
+import { useTheme } from "next-themes";
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isLangOpen, setIsLangOpen] = useState(false); // Language dropdown state
-  const [currentLang, setCurrentLang] = useState("English"); // Tracks selected language
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { i18n } = useTranslation();
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-  } = useNotifications();
 
-  const {
-    user,
-    userProfile,
-    signOut,
-    isAuthenticated,
-    loading,
-  } = useAuthContext();
+  const { user, userProfile, signOut, isAuthenticated, loading } =
+    useAuthContext();
 
   const dropdownRef = useRef(null);
-  const langRef = useRef(null); // Ref to track language dropdown outside clicks
+  const notifRef = useRef(null);
   const pathname = usePathname();
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [prefersDark, setPrefersDark] = useState(null);
+  const { resolvedTheme } = useTheme();
+
+  const isDark = (mounted ? resolvedTheme : null) === "dark";
+  const onDashboard = isDashboardRoute(pathname);
+
+  const switchLanguage = (lang) => {
+    document.cookie = `locale=${lang}; path=/; max-age=31536000`;
+    window.location.reload();
+  };
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    setMounted(true);
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light") setPrefersDark(false);
-      else if (saved === "dark") setPrefersDark(true);
-      else {
-        setPrefersDark(
-          typeof window.matchMedia === "function" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-        );
-      }
-    } catch (e) {}
-  }, []);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [pathname]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollProgress(Math.min(window.scrollY / 100, 1));
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleClickOutside = useCallback((event) => {
-    if (
-      dropdownRef.current &&
-      event.target &&
-      !dropdownRef.current.contains(event.target)
-    ) {
+  const handleClickOutside = useCallback((e) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
       setIsDropdownOpen(false);
-      setIsNotificationOpen(false);
     }
-    // Close language selector if clicking outside
-    if (
-      langRef.current &&
-      event.target &&
-      !langRef.current.contains(event.target)
-    ) {
-      setIsLangOpen(false);
+    if (notifRef.current && !notifRef.current.contains(e.target)) {
+      setIsNotificationOpen(false);
     }
   }, []);
 
@@ -128,42 +77,49 @@ export function Navbar() {
   }, [handleClickOutside]);
 
   useEffect(() => {
-    const closeMenus = () => {
-      setIsDropdownOpen(false);
-      setIsNotificationOpen(false);
-      setIsMenuOpen(false);
-      setIsLangOpen(false);
-    };
-
-    const handleEscape = (e) => {
+    const onKey = (e) => {
       if (e.key === "Escape") {
-        closeMenus();
+        setIsDropdownOpen(false);
+        setIsNotificationOpen(false);
+        setIsMenuOpen(false);
+        setMobileSidebarOpen(false);
       }
     };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   useEffect(() => {
-    if (isMenuOpen) {
-      document.body.classList.add("overflow-hidden");
-    } else {
-      document.body.classList.remove("overflow-hidden");
+    if (!onDashboard) {
+      document.body.classList.toggle("overflow-hidden", isMenuOpen);
+      return () => document.body.classList.remove("overflow-hidden");
     }
-    return () => document.body.classList.remove("overflow-hidden");
-  }, [isMenuOpen]);
+  }, [isMenuOpen, onDashboard]);
 
   useEffect(() => {
     setIsMenuOpen(false);
     setIsDropdownOpen(false);
-    setIsNotificationOpen(false);
-    setIsLangOpen(false);
+    setMobileSidebarOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 640) {
+        setIsMenuOpen(false);
+      }
+      if (window.innerWidth >= 1024) {
+        setMobileSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
     setIsMenuOpen(false);
+    setMobileSidebarOpen(false);
     await signOut();
   };
 
@@ -191,32 +147,18 @@ export function Navbar() {
     return userProfile.role.charAt(0).toUpperCase() + userProfile.role.slice(1);
   };
 
-  const getDashboardLink = () => {
-    if (!userProfile?.role) return "/profile";
-    switch (userProfile.role) {
-      case "student": return "/student/dashboard";
-      case "teacher": return "/teacher/dashboard";
-      case "institute": return "/institute/dashboard";
-      case "admin": return "/admin/dashboard";
-      default: return "/profile";
-    }
-  };
-
-  const navigationItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/productivity", label: "Focus", icon: Sparkles },
-    { href: "/activity", label: "Activities", icon: Activity },
-    { href: "/complaints", label: "Complaints", icon: Mail },
-    { href: "/contact", label: "Contact", icon: Mail },
-  ];
+  const dashboardLink = getDashboardLink(userProfile?.role);
 
   const userMenuItems = [
     { href: "/profile", icon: User, label: "Profile", key: "profile" },
-    { href: getDashboardLink(), icon: Activity, label: "Dashboard", key: "dashboard" },
+    {
+      href: dashboardLink,
+      icon: Activity,
+      label: "Dashboard",
+      key: "dashboard",
+    },
     { href: "/settings", icon: Settings, label: "Settings", key: "settings" },
   ].filter((item) => !(item.key === "dashboard" && item.href === "/profile"));
-
-  const languagesList = ["English", "Español", "Français", "Deutsch", "हिन्दी"];
 
   const handleImageError = (e) => {
     const img = e.target;
@@ -227,378 +169,228 @@ export function Navbar() {
     }
   };
 
-  const scrollProgressValue =
-  Number.isFinite(scrollProgress)
-    ? scrollProgress
-    : 0;
-  
+  const checkRouteActive = (href) => isRouteActive(pathname, href);
+
+  const handleMobileMenuToggle = () => {
+    if (onDashboard) {
+      setMobileSidebarOpen((open) => !open);
+      return;
+    }
+    setIsMenuOpen((open) => !open);
+  };
+
+  const navStyle = getNavbarGlassStyle({ isDark, scrolled });
+
   return (
     <>
-      {/* Background Dimming Layer on Scroll */}
       <div
-        className="fixed w-full top-0 z-[60] h-24 bg-gradient-to-b from-black/60 via-black/10 to-transparent pointer-events-none transition-opacity duration-300"
-        style={{ opacity: 1 - scrollProgressValue * 0.5 }}
+        className="pointer-events-none fixed top-0 z-[60] h-20 w-full bg-gradient-to-b from-[#070B14]/40 to-transparent transition-opacity duration-400 dark:from-[#070B14]/50"
+        style={{ opacity: scrolled ? 0 : 1 }}
+        aria-hidden="true"
       />
 
-      {/* Main Navbar */}
-      <nav
-        className="fixed w-full top-0 left-0 right-0 z-[70] transition-all duration-300 ease-out"
-        style={{
-          // Use resolved theme when mounted; otherwise fall back to system preference
-          backgroundColor:
-            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
-              ? `rgba(0,0,0,${0.82 + scrollProgressValue * 0.12})`
-              : `rgba(255,255,255,0.98)`,
-          backdropFilter: `blur(20px)`,
-          WebkitBackdropFilter: `blur(20px)`,
-          borderBottom:
-            (mounted ? resolvedTheme : prefersDark ? "dark" : "light") === "dark"
-              ? `1px solid rgba(255,255,255,0.1)`
-              : `1px solid rgba(0,0,0,0.08)`,
-        }}
+      <motion.nav
+        className="fixed left-0 right-0 top-0 z-[70] w-full"
+        style={navStyle}
+        initial={{ y: -4, opacity: 0.8 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        aria-label="Main navigation"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex justify-between items-center h-16">
-            
-            {/* Logo Group */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="bg-blue-600 dark:bg-blue-500 p-2.5 rounded-xl text-white shadow-sm transition-all duration-200 group-hover:scale-102">
-                <BookOpen className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50 block leading-tight">
-                  Learnova
-                </span>
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-black mt-0.5 leading-none">
-                  Premium
-                </p>
-              </div>
-            </Link>
+        <div
+          className="pointer-events-none absolute left-0 right-0 top-0 h-px"
+          style={{ background: gradientBorderTop(isDark) }}
+          aria-hidden="true"
+        />
 
-            {/* Center Navigation Capsule */}
-            <div className="hidden sm:flex items-center space-x-1 bg-zinc-100/80 dark:bg-zinc-900/50 border border-zinc-200/30 dark:border-zinc-800/30 rounded-2xl p-1">
-              {navigationItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`text-sm font-bold tracking-wide px-5 py-2 rounded-xl transition-all duration-200 ${
-                      isActive
-                        ? "bg-accent/20 text-gray-950 dark:text-white font-medium"
-                        : "text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+            <NavbarBrand onNavigate={() => setIsMenuOpen(false)} />
             </div>
 
-            {/* Right Group Controls */}
-            <div className="hidden sm:flex items-center space-x-3">
-              
-              {/* Global Search Button */}
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent("learnova:open-search"))}
-                className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors border border-zinc-200/40 dark:border-zinc-800/50 cursor-pointer"
-                aria-label="Open search modal"
-              >
-                <Search className="h-4 w-4 text-zinc-400" />
-                <span className="hidden md:inline">Search</span>
-                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-400 text-[10px] rounded border border-zinc-200 dark:border-zinc-800 font-mono leading-none">Ctrl K</kbd>
-              </button>
-
-              {/* Language Selector Dropdown */}
-              <div className="relative" ref={langRef}>
-                <button
-                  onClick={() => setIsLangOpen(!isLangOpen)}
-                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors border border-zinc-200/40 dark:border-zinc-800/50"
-                  aria-label="Select language"
-                >
-                  <Languages className="h-4 w-4 text-zinc-400" />
-                  <span className="hidden md:inline">{currentLang}</span>
-               <ChevronDown
-  className="h-3.5 w-3.5 text-zinc-400 transition-transform duration-200"
-  style={{
-    transform: isLangOpen
-      ? "rotate(180deg)"
-      : "none",
-  }}
-/></button>
-
-                {isLangOpen && (
-                  <div className="absolute right-0 mt-2 w-36 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
-                    {languagesList.map((lang) => (
-                      <button
-                        key={lang}
-                        onClick={() => {
-                          setCurrentLang(lang);
-                          setIsLangOpen(false);
-                          if (i18n && i18n.changeLanguage) {
-                            i18n.changeLanguage(languageMap[lang]);
-                          }
-                        }}
-                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                          currentLang === lang
-                            ? "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-white font-bold"
-                            : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900"
-                        }`}
-                      >
-                        {lang}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Theme Toggle */}
-              {mounted && (
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
-              )}
-
-              {loading ? (
-                <div className="w-24 h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-xl" />
-              ) : isAuthenticated ? (
-                <div className="flex items-center space-x-3 pl-1 border-l border-zinc-200 dark:border-zinc-800">
-                  
-                  {/* Notifications Module Panel */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                      className="relative p-2 rounded-xl text-gray-900 dark:text-gray-50 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300 cursor-pointer"
-                      aria-label="View notifications"
-                    >
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && <span className="absolute top-2 right-2 bg-red-500 rounded-full h-2 w-2" />}
-                    </button>
-
-                    {isNotificationOpen && (
-                      <div className="absolute right-0 mt-3 w-72 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-[80] overflow-hidden">
-                        <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
-                          <h3 className="text-zinc-900 dark:text-zinc-100 font-bold text-sm">Notifications</h3>
-                          {unreadCount > 0 && (
-                            <button onClick={markAllAsRead} className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                              Mark all as read
-                            </button>
-                          )}
-                        </div>
-                        <div className="max-h-60 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
-                          {notifications.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-zinc-400">No new notices</div>
-                          ) : (
-                            notifications.map((n) => (
-                              <div key={n.id} onClick={() => markAsRead(n.id)} className={`p-3 text-left cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900/40 ${!n.read ? "bg-blue-50/30" : ""}`}>
-                                <p className="text-sm text-zinc-800 dark:text-zinc-200 line-clamp-2">{n.message}</p>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Profile Dropdown */}
-                  <div className="relative" ref={dropdownRef}>
-                    <button
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center space-x-3 p-2 rounded-xl text-gray-800 dark:text-gray-100 hover:text-gray-950 dark:hover:text-white hover:bg-accent/10 transition-all duration-300"
-                      aria-label="User profile menu"
-                      aria-haspopup="true"
-                      aria-expanded={isDropdownOpen}
-                    >
-                      <div className="relative w-10 h-10">
-                        {getUserPhoto() ? (
-                          <Image src={getUserPhoto()} alt="Profile" width={32} height={32} className="rounded-full object-cover" onError={handleImageError} />
-                        ) : (
-                          <div className="absolute inset-0 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-                            {getUserInitials(getUserDisplayName())}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronDown className="h-4 w-4 text-zinc-400" />
-                    </button>
-
-                    {isDropdownOpen && (
-                      <div className="absolute right-0 mt-3 w-48 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1 z-[80]">
-                        {userMenuItems.map((item) => (
-                          <Link key={item.key} href={item.href} onClick={() => setIsDropdownOpen(false)} className="flex items-center px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
-                            <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" /> {item.label}
-                          </Link>
-                        ))}
-                        <hr className="my-1 border-zinc-100 dark:border-zinc-900" />
-                        <button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
-                          <LogOut className="h-4 w-4 mr-2.5" /> Logout
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-              ) : (
-                <Button 
-                  asChild 
-                  size="default" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 h-10 text-sm shadow-sm active:scale-98 transition-all"
-                >
-                  <Link href="/auth">
-                    <span className="flex items-center gap-2">
-                      Login
-                      <Sparkles className="h-4 w-4 text-blue-200" />
-                    </span>
-                  </Link>
-                </Button>
-              )}
-            </div>
-
-            {/* Mobile View Toggle Control Trigger */}
-            <div className="sm:hidden">
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label="Toggle Menu"
-                aria-expanded={isMenuOpen}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-gray-900 dark:text-gray-50 hover:text-accent hover:bg-accent/10 transition-all duration-300"
-              >
-                {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
-              </Button>
-            </div>
-                  </div>
-          </div>
-        </nav>
-
-      {/* Mobile Drawer Overlay Architecture */}
-      {isMenuOpen && (
-        <>
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[85]" onClick={() => setIsMenuOpen(false)} />
-          <div className="fixed top-4 right-4 max-w-[85vw] w-64 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-2xl shadow-xl p-4 space-y-4 z-[90] flex flex-col transition-all">
-            <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-900 pb-2">
-              <span className="font-bold text-sm text-zinc-400 uppercase tracking-wider">Menu</span>
-              <X className="h-5 w-5 text-zinc-400 cursor-pointer" onClick={() => setIsMenuOpen(false)} />
-            </div>
-            
-            {isAuthenticated && (
-              <div className="flex items-center space-x-3 p-2 bg-zinc-50 dark:bg-zinc-900/40 rounded-xl border border-zinc-100 dark:border-zinc-800/50">
-                <div className="relative w-10 h-10 shrink-0">
-                  {getUserPhoto() ? (
-                    <Image src={getUserPhoto()} alt="Profile" width={40} height={40} className="rounded-full object-cover" onError={handleImageError} />
-                  ) : (
-                    <div className="absolute inset-0 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
-                      {getUserInitials(getUserDisplayName())}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 truncate">{getUserDisplayName()}</h4>
-                  <p className="text-[11px] text-zinc-400 truncate">{getUserRole()}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Mobile Nav Actions */}
-            <div className="flex flex-col space-y-1">
-              {navigationItems.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setIsMenuOpen(false)} className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                  <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" />
-                  {item.label}
-                </Link>
+            <div className={navCapsuleClass}>
+              {NAVIGATION_ITEMS.map((item) => (
+                <NavLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  isActive={checkRouteActive(item.href)}
+                />
               ))}
             </div>
 
-            {/* Mobile Language Selector */}
-            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
-              <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2 px-1">Language</span>
-              <div className="grid grid-cols-2 gap-1.5">
-                {languagesList.slice(0, 4).map((lang) => (
-                  <button
-                    key={lang}
-                    onClick={() => {
-                          setCurrentLang(lang);
-                          setIsMenuOpen(false);
-                          if (i18n && i18n.changeLanguage) {
-                            i18n.changeLanguage(languageMap[lang]);
-                          }
-                        }}
-                    className={`text-xs p-2 rounded-xl border text-center transition-all ${
-                      currentLang === lang
-                        ? "bg-blue-600 text-white border-blue-600 font-bold"
-                        : "bg-zinc-50 dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800/60 text-zinc-600 dark:text-zinc-400"
-                    }`}
-                  >
-                    {lang}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <div className="hidden items-center gap-2 sm:flex">
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("learnova:open-search"))
+                }
+                className="flex items-center gap-1.5 rounded-xl border border-zinc-200/40 px-3 py-2 text-sm font-semibold text-zinc-600 transition-colors hover:bg-zinc-100/80 hover:text-zinc-900 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/8 dark:hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                aria-label="Open search"
+              >
+                <Search className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                <span className="hidden text-xs md:inline">Search</span>
+                <kbd className="hidden items-center rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] leading-none text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 lg:inline-flex">
+                  Ctrl K
+                </kbd>
+              </motion.button>
 
-            {/* Account Specific Navigation */}
-            {isAuthenticated && (
-              <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900 space-y-1">
-                {userMenuItems.map((item) => (
-                  <Link key={item.key} href={item.href} onClick={() => setIsMenuOpen(false)} className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900">
-                    <item.icon className="h-4 w-4 mr-2.5 text-zinc-400" />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+              <ThemeToggle />
 
-            {/* Primary Action Buttons */}
-            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900">
+              <div className="flex items-center gap-1 rounded-lg border border-zinc-200/50 p-1 dark:border-white/10">
+                <button
+                  onClick={() => switchLanguage("en")}
+                  className="rounded px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                  aria-label="Switch to English"
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => switchLanguage("hi")}
+                  className="rounded px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+                  aria-label="Switch to Hindi"
+                >
+                  हि
+                </button>
+              </div>
+
               {loading ? (
-                <div className="w-full h-10 bg-zinc-200 dark:bg-zinc-800 animate-pulse rounded-lg" />
+                <div className="h-9 w-24 animate-pulse rounded-xl bg-zinc-200 dark:bg-zinc-800" />
               ) : isAuthenticated ? (
-                <Button onClick={handleLogout} variant="destructive" size="default" className="w-full text-white rounded-lg text-sm h-10">
-                  <LogOut className="h-4 w-4 mr-2" /> Logout
-                </Button>
+                <div className="flex items-center gap-2 border-l border-zinc-200/60 pl-2 dark:border-white/10">
+                  <NotificationPanel
+                    isOpen={isNotificationOpen}
+                    onToggle={() => setIsNotificationOpen((open) => !open)}
+                    onCloseOthers={() => setIsDropdownOpen(false)}
+                    panelRef={notifRef}
+                  />
+                  <UserMenu
+                    isOpen={isDropdownOpen}
+                    onToggle={() => setIsDropdownOpen((open) => !open)}
+                    onClose={() => setIsDropdownOpen(false)}
+                    onCloseOthers={() => setIsNotificationOpen(false)}
+                    dropdownRef={dropdownRef}
+                    userMenuItems={userMenuItems}
+                    getUserDisplayName={getUserDisplayName}
+                    getUserRole={getUserRole}
+                    getUserPhoto={getUserPhoto}
+                    getUserInitials={getUserInitials}
+                    handleLogout={handleLogout}
+                    handleImageError={handleImageError}
+                  />
+                </div>
               ) : (
-                <Button asChild size="default" className="w-full bg-blue-600 text-white rounded-lg text-sm h-10">
-                  <Link href="/auth" onClick={() => setIsMenuOpen(false)}>
-                    <span className="flex items-center gap-2">
-                      Get Started <Sparkles className="h-4 w-4 text-blue-200" />
-                    </span>
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group relative"
+                  >
+                    <span className="absolute inset-0 rounded-xl bg-indigo-500 opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-20" />
+                    <Button
+                      asChild
+                      size="default"
+                      className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
+                    >
+                      <Link href="/auth?direct=true">
+                        <span className="flex items-center gap-1.5">
+                          Login <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
+                        </span>
+                      </Link>
+                    </Button>
+                  </motion.div>
+                  <motion.div
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="group relative"
+                  >
+                    <span className="absolute inset-0 rounded-xl bg-indigo-500 opacity-0 blur-lg transition-opacity duration-300 group-hover:opacity-20" />
+                    <Button
+                      asChild
+                      size="default"
+                      className="relative h-9 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:from-indigo-500 hover:to-violet-500"
+                    >
+                      <Link href="/auth?mode=signup&direct=true">
+                        <span className="flex items-center gap-1.5">
+                          Sign Up <Sparkles className="h-3.5 w-3.5 text-indigo-200" />
+                        </span>
+                      </Link>
+                    </Button>
+                  </motion.div>
+                </div>
               )}
             </div>
 
-            {/* Shortcuts Footer */}
-            <div className="text-center space-y-2 pt-1 flex flex-col items-center">
-              <div className="flex items-center justify-center gap-4">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-search"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
-                >
-                  <Search className="h-3.5 w-3.5" />
-                  <span>Search</span>
-                </button>
-                <span className="text-zinc-600 dark:text-zinc-800">|</span>
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    window.dispatchEvent(new CustomEvent("learnova:open-shortcuts"));
-                  }}
-                  className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-blue-600 transition-colors text-xs"
-                >
-                  <Keyboard className="h-3.5 w-3.5" />
-                  <span>Shortcuts</span>
-                </button>
-              </div>
-              <p className="text-zinc-400/50 text-[10px]">© {new Date().getFullYear()} Learnova.</p>
+            <div className="sm:hidden">
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={handleMobileMenuToggle}
+                className={iconBtnClass}
+                aria-label={onDashboard ? "Open dashboard sidebar" : "Toggle menu"}
+                aria-expanded={onDashboard ? mobileSidebarOpen : isMenuOpen}
+              >
+                <AnimatePresence mode="wait">
+                  {(onDashboard ? mobileSidebarOpen : isMenuOpen) ? (
+                    <motion.span
+                      key="x"
+                      initial={{ rotate: -45, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: 45, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <X className="h-6 w-6" />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="menu"
+                      initial={{ rotate: 45, opacity: 0 }}
+                      animate={{ rotate: 0, opacity: 1 }}
+                      exit={{ rotate: -45, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {onDashboard ? (
+                        <PanelLeft className="h-6 w-6" />
+                      ) : (
+                        <Menu className="h-6 w-6" />
+                      )}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
-
           </div>
-        </>
+        </div>
+      </motion.nav>
+
+      {onDashboard && (
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      {!onDashboard && (
+        <MobileNavDrawer
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          isDark={isDark}
+          navigationItems={NAVIGATION_ITEMS}
+          isRouteActive={checkRouteActive}
+          isAuthenticated={isAuthenticated}
+          loading={loading}
+          userMenuItems={userMenuItems}
+          getUserDisplayName={getUserDisplayName}
+          getUserRole={getUserRole}
+          getUserPhoto={getUserPhoto}
+          getUserInitials={getUserInitials}
+          handleLogout={handleLogout}
+          handleImageError={handleImageError}
+        />
       )}
     </>
   );

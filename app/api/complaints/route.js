@@ -1,38 +1,56 @@
-import { NextResponse } from "next/server";
 import { connectDb } from "@/lib/mongodb";
+import { requireAuth } from "@/lib/rbac";
+import { withErrorHandler } from "@/lib/error-handler";
+import { AppError } from "@/lib/errors";
+import { jsonSuccess, fail } from "@/lib/api-response";
+import { checkRateLimit } from "@/lib/rateLimit";
+import { createComplaintSchema, withValidation } from "@/lib/validations";
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const { category, subject, description, priority } = body;
+export const dynamic = "force-dynamic";
 
-    // Validation
-    if (!category || !subject || !description || !priority) {
-      return NextResponse.json(
-        { message: "All fields are required" },
-        { status: 400 }
+const MAX_COMPLAINT_PAYLOAD_BYTES = 1024 * 10;
+
+export const POST = withErrorHandler(
+  withValidation(
+    createComplaintSchema,
+    async (req, validatedData) => {
+      const decodedToken = await requireAuth(req);
+
+      // Rate limit by both IP and userId to prevent spam from authenticated users
+      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const rateLimitResult = await checkRateLimit(
+        `complaints_post_${ip}_${decodedToken.uid}`
       );
-    }
+      if (!rateLimitResult.allowed) {
+        return fail(
+          429,
+          "TOO_MANY_REQUESTS",
+          "Too many complaint submissions. Please wait before submitting again."
+        );
+      }
 
-    const db = await connectDb();
+      const { category, subject, description, priority } = validatedData;
 
-    await db.collection("complaints").insertOne({
-      category,
-      subject,
-      description,
-      priority,
-      createdAt: new Date(),
-    });
+      let db;
+      try {
+        db = await connectDb();
+      } catch (error) {
+        throw new AppError("Database connection failed. Please try again.", 503);
+      }
 
-    return NextResponse.json(
-      { message: "Complaint submitted successfully" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
-    );
-  }
-}
+      await db.collection("complaints").insertOne({
+        userId: decodedToken.uid,
+        userEmail: decodedToken.email,
+        category,
+        subject,
+        description,
+        priority,
+        status: "pending",
+        createdAt: new Date(),
+      });
+
+      return jsonSuccess({ message: "Complaint submitted successfully" });
+    },
+    { maxBytes: MAX_COMPLAINT_PAYLOAD_BYTES }
+  )
+);

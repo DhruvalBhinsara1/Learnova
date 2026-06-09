@@ -16,7 +16,16 @@ function isUserTyping(target) {
  *   Ctrl/Cmd + /   -> onHelp
  *   Escape         -> onEscape
  */
-export function useKeyboardShortcuts({ onSearch, onHelp, onEscape } = {}) {
+// AFTER (fixed)
+export function useKeyboardShortcuts({
+  onSearch,
+  onHelp,
+  onEscape,
+  onTheme,
+  onHome,
+  onLeaderboard,
+  onNotifications,
+} = {}) {
   const handleKeyDown = useCallback(
     (e) => {
       const active = document.activeElement;
@@ -37,11 +46,23 @@ export function useKeyboardShortcuts({ onSearch, onHelp, onEscape } = {}) {
       } else if (isModifier && e.key === "/") {
         e.preventDefault();
         onHelp?.();
+      } else if (isModifier && e.key === "t") {
+        e.preventDefault();
+        onTheme?.();
+      } else if (isModifier && e.key === "h") {
+        e.preventDefault();
+        onHome?.();
+      } else if (isModifier && e.key === "l") {
+        e.preventDefault();
+        onLeaderboard?.();
+      } else if (isModifier && e.key === "n") {
+        e.preventDefault();
+        onNotifications?.();
       } else if (e.key === "Escape") {
         onEscape?.();
       }
     },
-    [onSearch, onHelp, onEscape]
+    [onSearch, onHelp, onEscape, onTheme, onHome, onLeaderboard, onNotifications]
   );
 
   useEffect(() => {
