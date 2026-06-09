@@ -109,27 +109,7 @@ const parseClassStartTime = (time = "") => {
   };
 };
 
-  const [showComplaint, setShowComplaint] =
-    useState(false);
 
-    const [skillPath, setSkillPath] = useState("standard"); 
-    const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(true);
-
-    useEffect(() => {
-    const fetchActivity = async () => {
-      try {
-        if (!user?.uid) return;
-        const activities = await getUserActivities(user.uid);
-        const mapped = activities.map(a => ({
-         subject: a.title,
-          date: a.timestamp?.toLocaleDateString() || "",
-          status: a.progress >= 100 ? "present" : "late",
-          }));
-setRecentActivity(mapped);
-      } catch (err) {
-        console.error("Failed to load activity", err);
-      }
-    };
 const getUpcomingClass = (classes, now) => {
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -252,6 +232,8 @@ const StudentDashboard = () => {
 
   const [viewMode, setViewMode] = useState("heatmap");
   const [showComplaint, setShowComplaint] = useState(false);
+  const [skillPath, setSkillPath] = useState("standard");
+  const [showDiagnosticQuiz, setShowDiagnosticQuiz] = useState(true);
   const lastScheduleTickRef = useRef(getScheduleTickKey(new Date()));
 
   const attendanceStats = useMemo(() => {
@@ -408,70 +390,7 @@ const StudentDashboard = () => {
         </div>
       )}
       {/* --- PASTE CHANGE 3 END --- */}
-      <div className="relative z-10">
-        <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
-          <div className="bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  {user?.photoURL ? (
-                    <Image
-                      src={user.photoURL}
-                      alt="Profile"
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 rounded-xl border border-accent/30 object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-blue-500 flex items-center justify-center border border-accent/30">
-                      <span className="text-sm font-bold text-white">
-                        {getUserInitials()}
-                      </span>
-                    </div>
-                  )}
 
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-black" />
-                </div>
-
-                <div>
-                  <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">
-                    {user?.displayName ||
-                      user?.email?.split("@")[0] ||
-                      "Student"}
-                  </h1>
-
-                  <div className="text-sm text-gray-400">
-                    {user?.email || "No email"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-xl font-mono text-white">
-                  {currentTime?.toLocaleTimeString(
-                    [],
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }
-                  )}
-                </div>
-
-                <div className="text-xs text-gray-400">
-                  {currentTime?.toLocaleDateString(
-                    [],
-                    {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    }
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* MAIN CONTENT CONTINUES */}
       {/* --- PASTE THIS BLOCK RIGHT HERE TO DISPLAY DYNAMIC CONTENT SECTIONS --- */}
