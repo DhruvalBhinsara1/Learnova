@@ -124,8 +124,20 @@ const createPdfDownload = (notice) => {
   doc.setTextColor(100, 116, 139); // Slate-500
 
   const createdAt = notice.createdAt ? new Date(notice.createdAt) : new Date();
+<<<<<<< HEAD
   const dateStr = createdAt.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
   const timeStr = createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+=======
+  const dateStr = createdAt.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = createdAt.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+>>>>>>> upstream/master
 
   doc.text(`Author: ${notice.author || "Unknown"}`, margin, cursorY);
   doc.text(`Published: ${dateStr} at ${timeStr}`, margin + 62, cursorY);
@@ -190,8 +202,8 @@ const createPdfDownload = (notice) => {
 
   // ── FIX FOR ISSUE #2007: Safe text extraction and fallback ──
   const rawContent = notice.content || notice.text;
-  const safeContent = (typeof rawContent === "string" && rawContent.trim().length > 0) 
-    ? rawContent 
+  const safeContent = (typeof rawContent === "string" && rawContent.trim().length > 0)
+    ? rawContent
     : "No text content provided for this notice.";
   // ────────────────────────────────────────────────────────────
 
@@ -320,23 +332,23 @@ const NoticeCard = ({
   }, [notice]);
 
   const handleCopyLink = useCallback(async () => {
-  const noticeUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/notices/${notice.id}`
-      : "";
+    const noticeUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/notices/${notice.id}`
+        : "";
 
-  try {
-    await navigator.clipboard.writeText(noticeUrl);
+    try {
+      await navigator.clipboard.writeText(noticeUrl);
 
-    setCopyFeedback(true);
+      setCopyFeedback(true);
 
-    setTimeout(() => {
-      setCopyFeedback(false);
-    }, 2000);
-  } catch (err) {
-    console.error("Failed to copy notice link", err);
-  }
-}, [notice]);
+      setTimeout(() => {
+        setCopyFeedback(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to copy notice link", err);
+    }
+  }, [notice]);
 
   const handleShareNotice = useCallback(async () => {
     const noticeUrl =
@@ -435,8 +447,8 @@ const NoticeCard = ({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className={`inline-flex items-center gap-2 rounded-3xl border px-4 py-2 text-sm font-semibold transition active:scale-95 ${isRead
-                ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-                : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
+              ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+              : "border-indigo-500/40 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
               }`}
             aria-label={isRead ? "Mark notice unread" : "Mark notice read"}
           >
@@ -537,6 +549,57 @@ const NoticeCard = ({
           </motion.span>
         ))}
       </motion.div>
+
+      {/* Attachments — feat #2184: rich media support */}
+      {notice.attachments?.length > 0 && (
+        <div className="mt-5 space-y-3">
+          <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+            Attachments
+          </p>
+          {notice.attachments.map((att, i) => (
+            <div key={i}>
+              {att.type === "link" ? (
+                
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-sky-400 hover:underline break-all"
+                >
+                  🔗 {att.name}
+                </a>
+              ) : att.type?.startsWith("image/") ? (
+                
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    src={att.url}
+                    alt={att.name}
+                    className="rounded-xl max-h-48 w-full object-cover border border-slate-700 hover:opacity-90 transition"
+                  />
+                </a>
+              ) : att.type === "application/pdf" ? (
+                <div className="rounded-xl overflow-hidden border border-slate-700">
+                  <iframe
+                    src={att.url}
+                    title={att.name}
+                    className="w-full h-48"
+                  />
+                  
+                    href={att.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 transition"
+                  >
+                    📄 {att.name} — Open PDF
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
 
       <motion.div
         initial={{ opacity: 0 }}

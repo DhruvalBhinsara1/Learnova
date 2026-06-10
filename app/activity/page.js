@@ -313,6 +313,20 @@ export default function ActivityPage() {
       icon: BookOpen,
       gradient: "from-rose-500 to-pink-600",
       type: "quiz",
+    },
+    {
+      id: 11,
+      title: "Junior Coding Quest",
+      description: "A fun and engaging way to learn coding fundamentals",
+      category: "coding",
+      level: "elementary",
+      duration: "25 min",
+      participants: 4231,
+      difficulty: "Beginner",
+      rating: 4.7,
+      icon: Zap,
+      gradient: "from-emerald-500 to-teal-600",
+      type: "quiz",
     }
   ];
 
@@ -369,7 +383,11 @@ export default function ActivityPage() {
     try {
       // 2. Asynchronous Persistence
       const dbId = await logActivity(user.uid, newActivity);
-      await updateUserStat(user.uid, "Courses Enrolled", 1);
+      // Best-effort stats update; do not fail enrollment on stats errors
+      const statResult = await updateUserStat(user.uid, "Courses Enrolled", 1);
+      if (statResult?.success === false) {
+        console.warn("Stats update failed:", statResult.error);
+      }
 
       // 3. Seamless Reconciliation
       setActivities((prev) => [
