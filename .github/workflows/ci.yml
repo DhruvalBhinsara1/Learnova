@@ -41,6 +41,10 @@ jobs:
       - name: 🔧 Fix native bindings for Linux CI
         run: |
           set -euo pipefail
+          if [ ! -f "./node_modules/rollup/package.json" ]; then
+            echo "Error: rollup package not found. Ensure npm ci completed successfully."
+            exit 1
+          fi
           fix_native() {
             local pkg="$1" dir="$2"
             mkdir -p "$dir"
