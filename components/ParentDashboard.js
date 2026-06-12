@@ -120,6 +120,14 @@ const ParentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const tabs = [
+    { id: "overview", label: "Overview", icon: TrendingUp },
+    { id: "child_progress", label: "Progress", icon: Activity },
+    { id: "attendance", label: "Attendance", icon: Calendar },
+    { id: "academics", label: "Academics", icon: BookOpen },
+    { id: "achievements", label: "Achievements", icon: Award },
+    { id: "notices", label: "Notices", icon: Bell },
+  ];
 
   // Linked children
   const [children, setChildren] = useState([]);
@@ -381,7 +389,7 @@ const ParentDashboard = () => {
 
   if (children.length === 0) {
     return (
-
+      <>
         <Navbar />
         <div className="max-w-4xl mx-auto pt-32 px-6 text-center space-y-6">
           <div className="w-20 h-20 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center justify-center mx-auto text-pink-400">
@@ -406,9 +414,9 @@ const ParentDashboard = () => {
             </button>
           </div>
         </div>
-      </div>
-    );
-  }
+    </>
+  );
+}
 
   const getAttendanceRateColor = (rate) => {
     if (rate >= 85) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
@@ -423,6 +431,7 @@ const ParentDashboard = () => {
   };
 
   return (
+      <>
 
       <Navbar />
 
@@ -561,7 +570,7 @@ const ParentDashboard = () => {
       {/* ── Tab Switcher Menu ── */}
       <div className="max-w-7xl mx-auto px-6 mb-8">
         <div className="flex items-center gap-2 border-b border-white/10 pb-2 flex-wrap">
-
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
@@ -1243,7 +1252,7 @@ const ParentDashboard = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };
 
