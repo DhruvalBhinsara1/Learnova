@@ -52,6 +52,10 @@ const typeStyles = {
   notice:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200",
   alert: "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  attendance_warning:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
+  low_attendance:
+    "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-200",
 };
 
 export default function NotificationBell() {
