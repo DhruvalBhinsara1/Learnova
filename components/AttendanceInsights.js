@@ -43,22 +43,22 @@ const InsightCard = ({ icon: Icon, label, value, color }) => {
 const AttendanceInsights = ({ recentActivity }) => {
   const safeRecords = Array.isArray(recentActivity) ? recentActivity : [];
 
-  const {
-  currentStreak,
-  longestStreak,
-  consistency,
-  badge,
-  } = useMemo(() => {
-    const currentStreak = calculateCurrentStreak(safeRecords);
-    const longestStreak = calculateLongestStreak(safeRecords);
-    const consistency = calculateConsistency(safeRecords);
-    
-    return {
-    currentStreak,
-    longestStreak,
-    consistency,
-    badge: getBadge(consistency),
-  };}, [safeRecords]);
+  const currentStreak = useMemo(
+    () => calculateCurrentStreak(safeRecords),
+    [safeRecords]
+  );
+
+  const longestStreak = useMemo(
+    () => calculateLongestStreak(safeRecords),
+    [safeRecords]
+  );
+
+  const consistency = useMemo(
+    () => calculateConsistency(safeRecords),
+    [safeRecords]
+  );
+
+  const badge = useMemo(() => getBadge(consistency), [consistency]);
 
   return (
     <div className="bg-black/40 backdrop-blur-xl rounded-[2rem] border border-white/10 p-6 shadow-2xl">
