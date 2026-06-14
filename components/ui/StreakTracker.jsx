@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {normalizeStreakCount,getStreakBadge,getNextMilestone,} from "@/lib/streakUtils";
 
 /**
  * StreakTracker Component
@@ -12,6 +13,8 @@ import { cn } from "@/lib/utils";
 export default function StreakTracker({ className }) {
   const [streak, setStreak] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const [badge, setBadge] = useState("");
+  
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -61,10 +64,28 @@ export default function StreakTracker({ className }) {
 
       setStreak(currentStreak);
       setIsActive(currentStreak > 0);
+      if (currentStreak >= 100) {
+  setBadge("🏆 Learning Master");
+} else if (currentStreak >= 30) {
+  setBadge("🥇 Study Champion");
+} else if (currentStreak >= 7) {
+  setBadge("🎖 Consistent Learner");
+}
     } catch (error) {
       console.error("Failed to update daily streak:", error);
     }
   }, []);
+
+  const nextMilestone =
+  streak < 7 ? 7 :
+  streak < 30 ? 30 :
+  streak < 100 ? 100 :
+  null;
+  {nextMilestone && (
+  <span className="text-[10px] opacity-70">
+    {nextMilestone - streak} days to {nextMilestone}-day milestone
+  </span>
+)}
 
   return (
     <div
@@ -83,7 +104,17 @@ export default function StreakTracker({ className }) {
           isActive ? "text-orange-500 fill-orange-500 scale-110 drop-shadow-[0_0_4px_rgba(249,115,22,0.5)]" : "text-zinc-400 dark:text-zinc-600"
         )}
       />
-      <span>{streak} Day{streak !== 1 ? "s" : ""} Streak</span>
+      <div className="flex flex-col">
+  <span>
+    {streak} Day{streak !== 1 ? "s" : ""} Streak
+  </span>
+
+  {badge && (
+    <span className="text-[10px] font-medium">
+      {badge}
+    </span>
+  )}
+</div>
     </div>
   );
 }
