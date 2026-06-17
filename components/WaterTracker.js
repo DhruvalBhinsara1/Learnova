@@ -15,19 +15,32 @@ export default function WaterTracker() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = safeLocalStorageGet(
-      "learnova-wellness-water",
-      DEFAULT_WATER_GLASSES
-    );
-    setGlasses(normalizeWaterGlasses(saved, DEFAULT_WATER_GLASSES, goal));
+    const savedDate = safeLocalStorageGet("learnova-wellness-water-date", "");
+    const today = new Date().toLocaleDateString();
+    if (savedDate !== today) {
+      safeLocalStorageSet("learnova-wellness-water", DEFAULT_WATER_GLASSES);
+      safeLocalStorageSet("learnova-wellness-water-date", today);
+      setGlasses(DEFAULT_WATER_GLASSES);
+    } else {
+      const saved = safeLocalStorageGet(
+        "learnova-wellness-water",
+        DEFAULT_WATER_GLASSES
+      );
+      setGlasses(normalizeWaterGlasses(saved, DEFAULT_WATER_GLASSES, goal));
+    }
   }, [goal]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    safeLocalStorageSet(
-      "learnova-wellness-water",
-      normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal)
-    );
+    const normalized = normalizeWaterGlasses(glasses, DEFAULT_WATER_GLASSES, goal);
+    safeLocalStorageSet("learnova-wellness-water", normalized);
+
+    // Also update today's snapshot so the timeline stays in sync
+    const today = new Date().toISOString().split("T")[0];
+    const snapshots = safeLocalStorageGet("learnova-wellness-snapshots", {});
+    snapshots[today] = { ...(snapshots[today] || {}), water: normalized };
+    safeLocalStorageSet("learnova-wellness-snapshots", snapshots);
+    window.dispatchEvent(new Event("learnova-wellness-updated"));
   }, [glasses, goal]);
 
   const progress = useMemo(

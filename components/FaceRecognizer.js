@@ -386,16 +386,14 @@ export default function FaceRecognizer({ authUser }) {
     );
   };
 
-  const processVideo = async () => {
-    if (!isMounted.current || !videoRef.current || videoRef.current.paused)
-      return;
-
-    let faceapi = faceapiRef.current;
-    if (!faceapi) {
-      faceapi = await import("face-api.js");
-      faceapiRef.current = faceapi;
-    }
-    if (!isMounted.current || abortControllerRef.current?.signal.aborted)
+  const processVideo = async (signal) => {
+    if (
+      !videoRef.current ||
+      !canvasRef.current ||
+      !faceMatcherRef.current ||
+      !isMounted.current ||
+      signal?.aborted
+    ) {
       return;
     const processVideo = async (signal) => {
       if (

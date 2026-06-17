@@ -364,6 +364,7 @@ export default function Timetable({ role = "student" }) {
   };
 
   const getMinutesOfTime = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return 0;
     const [h, m] = timeStr.split(":").map(Number);
     return (h || 0) * 60 + (m || 0);
   };

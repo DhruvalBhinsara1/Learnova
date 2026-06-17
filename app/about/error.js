@@ -5,7 +5,12 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 
 export default function Error({ error, reset }) {
   useEffect(() => {
-    console.error("Route error:", error);
+    // Conditionally log error information based on the environment
+    if (process.env.NODE_ENV === 'production') {
+      console.error("A client-side error occurred in production.");
+    } else {
+      console.error("Route error:", error);
+    }
   }, [error]);
 
   return (
