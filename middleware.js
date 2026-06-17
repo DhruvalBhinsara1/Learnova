@@ -1,24 +1,8 @@
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { Redis } from "@upstash/redis";
+import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
 import getApiRouteRule from "@/lib/rbac-policy";
-
-let redisClient;
-
-function getRedisClient() {
-  if (
-    !redisClient &&
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -38,16 +22,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
-
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -65,6 +39,57 @@ const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+// ─── Secure IP Extraction ────────────────────────────────────────────────────
+// Extracts the real client IP:
+//   1. Prefers x-real-ip (set by reverse proxy, not user-controllable)
+//   2. Falls back to the rightmost IP in x-forwarded-for (last proxy hop)
+//   3. Rejects private/loopback/reserved IPs to prevent spoofing
+
+function isValidPublicIp(ip) {
+  if (!ip) return false;
+  const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const parts = ipv4Match.slice(1).map(Number);
+    if (parts.some(p => p < 0 || p > 255)) return false;
+    const [a, b, c, d] = parts;
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 0) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 198 && b === 18 && c === 0 && d === 0) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a >= 224) return false;
+    return true;
+  }
+  if (ip === '::1') return false;
+  if (ip.includes(':')) return false;
+  return false;
+}
+
+function extractClientIp(request) {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp && isValidPublicIp(realIp)) {
+    return realIp;
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map(s => s.trim()).filter(Boolean);
+    const rightmost = ips[ips.length - 1];
+    if (rightmost && isValidPublicIp(rightmost)) {
+      return rightmost;
+    }
+    for (const ip of ips) {
+      if (isValidPublicIp(ip)) return ip;
+    }
+  }
+
+  return null;
 }
 
 async function rateLimit(ip, pathname, request) {
@@ -333,6 +358,7 @@ async function verifyIdToken(token) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken: token }),
+        signal: AbortSignal.timeout(5000),
       }
     );
 
@@ -430,10 +456,7 @@ export async function middleware(request) {
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = extractClientIp(request) || "unknown";
 
     const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
 
@@ -479,29 +502,29 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
+  if (isTokenValid && pathname.startsWith("/api/")) {
+    const sessionId =
+      request.cookies.get("sessionId")?.value ||
+      request.headers.get("x-session-id");
+    if (sessionId) {
+      try {
+        const redis = getRedis();
+        if (redis) {
+          const exists = await redis.exists(`session:${sessionId}`);
+          if (exists !== 1) {
+            return NextResponse.json(
+              { error: "Session expired or terminated concurrently" },
+              { status: 401 }
+            );
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — continue without session validation
       }
     }
+  }
 
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
     const tokenFromCookie = request.cookies.get("authToken")?.value || null;
     if (tokenFromCookie) {
       try {
@@ -665,7 +688,7 @@ export async function middleware(request) {
 }
 
 // Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest, extractClientIp, isValidPublicIp };
 
 // Test helper to control cleanup timer
 function resetForTest(now) {
