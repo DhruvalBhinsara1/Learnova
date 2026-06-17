@@ -727,7 +727,6 @@ const generateRoadmap = () => {
           </div>
         </div>
       )}
-
       {/* Main Dashboard Header */}
       <div className="relative z-10">
         <div className="max-w-7xl mx-auto pt-20 pb-6 px-6">
