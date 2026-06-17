@@ -271,7 +271,7 @@ export default function AttendanceRiskDashboard() {
 
             return (
               <div
-                key={student.userId || student.email || Math.random()}
+                key={student.userId || student.email || student.studentName}
                 className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border ${rowConfig.row || "border-white/10"} transition-colors`}
               >
                 {/* Student info */}
