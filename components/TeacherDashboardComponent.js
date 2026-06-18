@@ -65,7 +65,7 @@ import {
   XCircle,
 } from "lucide-react";
 import ExportDropdown from "@/components/ui/ExportDropdown";
-import { exportToCSV, exportToPDF } from "@/utils/exportUtils";
+import { exportToCSV } from "@/utils/exportUtils";
 import { exportAttendancePDF } from "@/utils/pdf/attendanceReport";
 import dynamic from "next/dynamic";
 import ChartSkeleton from "@/components/ui/ChartSkeleton";
@@ -199,14 +199,79 @@ const TeacherDashboard = () => {
     setTimeout(() => {
       if (!isMounted()) return;
       try {
-        const exportData = studentAttendanceData.map((student) => ({
-          Date: student.date || new Date().toLocaleDateString(),
-          StudentName: student.name,
-          RollNo: student.rollNo,
-          Status: student.status,
-          Time: student.time || "-",
-          Confidence: student.confidence || "-",
+        const meta = {
+          className: selectedClass || "All Classes",
+          dateRange: "Last 28 days",
+          teacherName: teacher?.name || "N/A",
+          instituteName: userProfile?.instituteName || "Learnova Institute",
+        };
+
+        // For the Analytics tab we export student roster with available metrics
+        const analyticsRows = studentAttendanceData.map((student) => ({
+          "Class Name": meta.className,
+          "Date Range": meta.dateRange,
+          Teacher: meta.teacherName,
+          "Student Name": student.name || "—",
+          "Roll No": student.rollNo || "—",
+          "Today's Status": (student.status || "absent").toUpperCase(),
+          "Check-in Time": student.time || "—",
+          "Confidence Score":
+            student.confidence != null ? `${student.confidence}%` : "—",
+          "Attendance %": "—",
+          "Report Generated": new Date().toLocaleString(),
         }));
+
+        if (format === "csv") {
+          exportToCSV(
+            analyticsRows,
+            `analytics-report-${meta.className.replace(/[^a-z0-9]/gi, "_").toLowerCase()}-${new Date().toISOString().slice(0, 10)}`
+          );
+        } else {
+          const rosterRows = studentAttendanceData.map((student) => ({
+            Date: student.date || new Date().toLocaleDateString(),
+            studentName: student.name,
+            rollNo: student.rollNo,
+            status: student.status,
+            time: student.time || "—",
+            confidence: student.confidence != null ? student.confidence : null,
+          }));
+          exportAttendancePDF(rosterRows, {
+            ...meta,
+            logoUrl: userProfile?.logoUrl || null,
+            summary: {
+              totalStudents: attendanceStats.totalStudents,
+              presentToday: attendanceStats.presentToday,
+              absentToday: attendanceStats.absentToday,
+              lateToday: attendanceStats.lateToday,
+            },
+          });
+        }
+        toast.success(`Successfully exported as ${format.toUpperCase()}`);
+      } catch (error) {
+        console.error("Export failed:", error);
+        toast.error("Failed to export report");
+      } finally {
+        if (isMounted()) setIsExporting(false);
+      }
+    }, 500);
+  };
+
+  /**
+   * Export the daily attendance roster (studentAttendanceData).
+   * Uses structured CSV columns: Class Name, Date Range, Student Name,
+   * Roll No, Date, Status, Check-in Time, Confidence Score.
+   */
+  const handleAttendanceExport = (format) => {
+    setIsExporting(true);
+    setTimeout(() => {
+      if (!isMounted()) return;
+      try {
+        const meta = {
+          className: selectedClass || "All Classes",
+          dateRange: "Today — " + new Date().toLocaleDateString(),
+          teacherName: teacher?.name || "N/A",
+          instituteName: userProfile?.instituteName || "Learnova Institute",
+        };
 
         const attendanceSummary = {
           totalStudents: attendanceStats.totalStudents,
@@ -215,26 +280,45 @@ const TeacherDashboard = () => {
           lateToday: attendanceStats.lateToday,
         };
 
-        const filename = `attendance_report_${selectedClass || "all"}_${
-          new Date().toISOString().split("T")[0]
-        }`;
+        // Map roster to the shape exportAttendancePDF / exportAnalyticsCSV expect
+        const rosterRows = studentAttendanceData.map((student) => ({
+          Date: student.date || new Date().toLocaleDateString(),
+          studentName: student.name,
+          rollNo: student.rollNo,
+          status: student.status,
+          time: student.time || "—",
+          confidence: student.confidence != null ? student.confidence : null,
+        }));
 
         if (format === "csv") {
-          exportToCSV(exportData, filename);
+          // Build the structured CSV directly with all required columns
+          const csvRows = studentAttendanceData.map((student) => ({
+            "Class Name": meta.className,
+            "Date Range": meta.dateRange,
+            "Student Name": student.name || "—",
+            "Roll No": student.rollNo || "—",
+            Date: student.date || new Date().toLocaleDateString(),
+            Status: (student.status || "absent").toUpperCase(),
+            "Check-in Time": student.time || "—",
+            "Confidence Score":
+              student.confidence != null ? `${student.confidence}%` : "—",
+            "Attendance %": "—",
+          }));
+          exportToCSV(
+            csvRows,
+            `attendance-report-${meta.className.replace(/[^a-z0-9]/gi, "_").toLowerCase()}-${new Date().toISOString().slice(0, 10)}`
+          );
         } else {
-          exportAttendancePDF(exportData, {
-            className: selectedClass || "All Classes",
-            teacherName: teacher?.name || "N/A",
-            dateRange: "Today",
-            instituteName: userProfile?.instituteName || "Learnova Institute",
+          exportAttendancePDF(rosterRows, {
+            ...meta,
             logoUrl: userProfile?.logoUrl || null,
             summary: attendanceSummary,
           });
         }
         toast.success(`Successfully exported as ${format.toUpperCase()}`);
       } catch (error) {
-        console.error("Export failed:", error);
-        toast.error("Failed to export report");
+        console.error("Attendance export failed:", error);
+        toast.error("Failed to export attendance report");
       } finally {
         if (isMounted()) setIsExporting(false);
       }
@@ -570,7 +654,7 @@ const TeacherDashboard = () => {
 
     const today = dayNames[day];
 
-    setTodayClasses(weeklySchedule[today] || []);
+    setTodayClasses(Array.isArray(weeklySchedule?.[today]) ? weeklySchedule[today] : []);
   }, [weeklySchedule]);
 
   const generatePasscode = async () => {
@@ -955,8 +1039,9 @@ const TeacherDashboard = () => {
 
             <div className="space-y-3">
               <ExportDropdown
-                onExport={handleExport}
+                onExport={handleAttendanceExport}
                 isExporting={isExporting}
+                label="Export Reports"
                 className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left flex justify-start items-center"
               >
                 <div className="flex items-center space-x-3 text-left">
@@ -966,13 +1051,13 @@ const TeacherDashboard = () => {
                       Export Reports
                     </div>
                     <div className="text-sm text-muted-foreground dark:text-gray-400">
-                      CSV/PDF formats
+                      CSV / PDF formats
                     </div>
                   </div>
                 </div>
               </ExportDropdown>
 
-              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Action button">
+              <button className="w-full bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:from-green-600/30 hover:to-emerald-600/30 border border-green-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Upload schedule">
                 <div className="flex items-center space-x-3">
                   <Upload className="w-5 h-5 text-green-400" />
                   <div>
@@ -984,28 +1069,13 @@ const TeacherDashboard = () => {
                 </div>
               </button>
 
-              <button className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Action button">
+              <button className="w-full bg-gradient-to-r from-orange-600/20 to-red-600/20 hover:from-orange-600/30 hover:to-red-600/30 border border-orange-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left" aria-label="Send notification">
                 <div className="flex items-center space-x-3">
                   <Bell className="w-5 h-5 text-orange-400" />
                   <div>
                     <div className="font-medium">Send Notification</div>
                     <div className="text-sm text-muted-foreground dark:text-gray-400">
                       To students/parents
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleExport('csv')}
-                className="w-full bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white p-3 rounded-xl transition-colors text-left"
-               aria-label="Action button">
-                <div className="flex items-center space-x-3">
-                  <Download className="w-5 h-5 text-purple-400" />
-                  <div>
-                    <div className="font-medium">Export Reports</div>
-                    <div className="text-sm text-muted-foreground dark:text-gray-400">
-                      CSV format (Instant Download)
                     </div>
                   </div>
                 </div>
@@ -1080,13 +1150,22 @@ const TeacherDashboard = () => {
 
   const renderAnalytics = () => (
     <div className="space-y-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
-          Analytics Dashboard
-        </h2>
-        <p className="text-muted-foreground dark:text-gray-400">
-          Detailed insights and trends
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground dark:text-white mb-2">
+            Analytics Dashboard
+          </h2>
+          <p className="text-muted-foreground dark:text-gray-400">
+            Detailed insights and trends
+          </p>
+        </div>
+        {/* Analytics export button */}
+        <ExportDropdown
+          onExport={handleExport}
+          isExporting={isExporting}
+          label="Export Analytics"
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/30 hover:to-blue-600/30 border border-purple-500/30 text-foreground dark:text-white px-4 py-2.5 rounded-xl transition-colors text-sm font-medium"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1273,9 +1352,10 @@ const TeacherDashboard = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => handleExport('csv')}
+                  onClick={() => handleAttendanceExport('csv')}
                   className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-2"
-                 aria-label="Action button">
+                  aria-label="Export attendance data as CSV"
+                >
                   <Download className="w-3 h-3" />
                   Export Data
                 </button>

@@ -76,7 +76,6 @@ export default function ChatBot() {
       t("suggestedQuestions.analytics.q3"),
       t("suggestedQuestions.analytics.q4"),
     ],
-
   };
 
   useEffect(() => {
@@ -140,7 +139,9 @@ export default function ChatBot() {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 w-96 bg-white dark:bg-gray-900 shadow-2xl rounded-2xl border border-gray-200 dark:border-gray-800 transition ${isMinimized ? 'h-14' : 'h-[500px]'} flex flex-col z-50`}>
+    <div
+      className={`fixed bottom-6 right-6 w-96 bg-white dark:bg-gray-900 shadow-2xl rounded-2xl border border-gray-200 dark:border-gray-800 transition ${isMinimized ? "h-14" : "h-[500px]"} flex flex-col z-50`}
+    >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-blue-600 text-white rounded-t-2xl">
         <div className="flex items-center gap-2">
           <Bot size={20} />
@@ -150,7 +151,9 @@ export default function ChatBot() {
           <button onClick={() => setIsMinimized(!isMinimized)}>
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
-          <button onClick={() => setIsOpen(false)}><X size={16} /></button>
+          <button onClick={() => setIsOpen(false)}>
+            <X size={16} />
+          </button>
         </div>
       </div>
 
@@ -161,13 +164,20 @@ export default function ChatBot() {
               {t("welcomeMessage")}
             </div>
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`p-3 rounded-xl text-sm max-w-[80%] ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'}`}>
+              <div
+                key={idx}
+                className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`p-3 rounded-xl text-sm max-w-[80%] ${msg.role === "user" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"}`}
+                >
                   {msg.content}
                 </div>
               </div>
             ))}
-            {isLoading && <div className="text-xs text-gray-400 italic">Thinking...</div>}
+            {isLoading && (
+              <div className="text-xs text-gray-400 italic">Thinking...</div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -176,7 +186,7 @@ export default function ChatBot() {
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition ${activeCategory === cat.id ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition ${activeCategory === cat.id ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
               >
                 {cat.label}
               </button>
