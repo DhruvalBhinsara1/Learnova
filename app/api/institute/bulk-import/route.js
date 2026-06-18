@@ -15,7 +15,7 @@ import {
 import { checkRateLimit } from "@/lib/rateLimit";
 import { AppError } from "@/lib/errors";
 import crypto from "crypto";
-import { logAuditEvent } from "@/lib/auditLogger";
+import { emitWebhookEvent } from "@/lib/webhook/dispatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -337,16 +337,12 @@ export async function POST(req) {
       await markIdempotent(idempotencyKey, resultPayload);
     }
 
-    logAuditEvent({
-      actor: decodedToken,
-      action: "user.bulk_import",
-      target: { type: "institute", id: instituteId },
-      details: {
-        successfulImports,
-        failedCount: failedImports.length,
-        totalProcessed: students.length,
-      },
-      request: req,
+    emitWebhookEvent("bulk.import.completed", {
+      instituteId,
+      successfulImports,
+      failedCount: failedImports.length,
+      totalProcessed: students.length,
+      importedUids: createdAuthUids,
     });
 
     return NextResponse.json(resultPayload, { status: 200 });

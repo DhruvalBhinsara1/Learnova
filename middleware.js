@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 import { getRedis } from "@/lib/redis";
 import { validateCsrfOriginAndReferer, validateCsrfRequest } from "@/lib/csrf";
-import getApiRouteRule from "@/lib/rbac-policy";
 
 const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const FIREBASE_AUTH_DOMAIN = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -22,16 +21,6 @@ const CLOCK_TOLERANCE_SECONDS = 60;
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = 5;
 
-function getRedis() {
-  if (!redisClient) {
-    redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-  }
-  return redisClient;
-}
-
 // Dev-only in-memory fallback (never used in production)
 const devRateLimitMap = new Map();
 
@@ -47,8 +36,104 @@ const AUTH_RATE_LIMITED_PATHS = [
 
 const PUBLIC_PATHS = ["/activity", "/auth", "/verify"];
 
+const PUBLIC_API_PATHS = new Set([
+  "/api/auth/csrf",
+  "/api/auth/reset-password",
+  "/api/health",
+]);
+
+const API_ROUTE_RULES = [
+  { pattern: /^\/api\/student(?:\/|$)/, roles: ["student", "admin"] },
+  { pattern: /^\/api\/teacher(?:\/|$)/, roles: ["teacher", "admin"] },
+  { pattern: /^\/api\/admin(?:\/|$)/, roles: ["admin"] },
+  { pattern: /^\/api\/institute(?:\/|$)/, roles: ["institute", "admin"] },
+  { pattern: /^\/api\/parent(?:\/|$)/, roles: ["parent", "admin"] },
+  { pattern: /^\/api\/analytics\/attendance-risk(?:\/|$)/, roles: ["teacher", "institute", "admin"] },
+  { pattern: /^\/api\/attendance\/settings(?:\/|$)/, roles: ["teacher", "admin"] },
+  { pattern: /^\/api\/attendance\/record(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/sync(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/validate-passcode(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/attendance\/heatmap(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/activities(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/cleanup(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/me(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/session(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/auth\/set-role(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/check-groq-config(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/complaints(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/conversations(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/flashcards(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/groq(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/images(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/labels(?:\/|$)/, roles: ["admin", "teacher", "student"] },
+  { pattern: /^\/api\/notifications(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/notifications\/seed(?:\/|$)/, roles: ["admin"] },
+  { pattern: /^\/api\/notices(?:\/|$)/, roles: ["teacher", "admin", "staff"] },
+  { pattern: /^\/api\/productivity(?:\/|$)/, roles: ["student", "teacher", "admin"] },
+  { pattern: /^\/api\/settings(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/stats(?:\/|$)/, authOnly: true },
+  { pattern: /^\/api\/upload\/avatar(?:\/|$)/, authOnly: true },
+];
+
+function getApiRouteRule(pathname) {
+  if (!pathname || !pathname.startsWith("/api/")) return null;
+  if (PUBLIC_API_PATHS.has(pathname)) return { public: true };
+  return API_ROUTE_RULES.find((rule) => rule.pattern.test(pathname)) || { authOnly: true };
+}
+
 function isAuthRoute(pathname) {
   return AUTH_RATE_LIMITED_PATHS.some((path) => pathname.startsWith(path));
+}
+
+// ─── Secure IP Extraction ────────────────────────────────────────────────────
+// Extracts the real client IP:
+//   1. Prefers x-real-ip (set by reverse proxy, not user-controllable)
+//   2. Falls back to the rightmost IP in x-forwarded-for (last proxy hop)
+//   3. Rejects private/loopback/reserved IPs to prevent spoofing
+
+function isValidPublicIp(ip) {
+  if (!ip) return false;
+  const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4Match) {
+    const parts = ipv4Match.slice(1).map(Number);
+    if (parts.some(p => p < 0 || p > 255)) return false;
+    const [a, b, c, d] = parts;
+    if (a === 10) return false;
+    if (a === 127) return false;
+    if (a === 169 && b === 254) return false;
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 0) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false;
+    if (a === 198 && b === 18 && c === 0 && d === 0) return false;
+    if (a === 198 && b === 51 && c === 100) return false;
+    if (a >= 224) return false;
+    return true;
+  }
+  if (ip === '::1') return false;
+  if (ip.includes(':')) return false;
+  return false;
+}
+
+function extractClientIp(request) {
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp && isValidPublicIp(realIp)) {
+    return realIp;
+  }
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const ips = forwarded.split(",").map(s => s.trim()).filter(Boolean);
+    const rightmost = ips[ips.length - 1];
+    if (rightmost && isValidPublicIp(rightmost)) {
+      return rightmost;
+    }
+    for (const ip of ips) {
+      if (isValidPublicIp(ip)) return ip;
+    }
+  }
+
+  return null;
 }
 
 async function rateLimit(ip, pathname, request) {
@@ -415,10 +500,7 @@ export async function middleware(request) {
 
   // ── 1. Rate limiting for auth API routes ──
   if (isAuthRoute(pathname)) {
-    const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
+    const ip = extractClientIp(request) || "unknown";
 
     const { allowed, remaining, retryAfter } = await rateLimit(ip, pathname, request);
 
@@ -464,7 +546,6 @@ export async function middleware(request) {
     }
   }
 
-  if (pathname.startsWith("/api/") && isUnsafeMethod) {
   if (isTokenValid && pathname.startsWith("/api/")) {
     const sessionId =
       request.cookies.get("sessionId")?.value ||
@@ -479,28 +560,15 @@ export async function middleware(request) {
               { error: "Session expired or terminated concurrently" },
               { status: 401 }
             );
-    if (isTokenValid && pathname.startsWith("/api/")) {
-      const sessionId =
-        request.cookies.get("sessionId")?.value ||
-        request.headers.get("x-session-id");
-      if (sessionId) {
-        try {
-          const redis = getRedisClient();
-          if (redis) {
-            const exists = await redis.exists(`session:${sessionId}`);
-            if (exists !== 1) {
-              return NextResponse.json(
-                { error: "Session expired or terminated concurrently" },
-                { status: 401 }
-              );
-            }
           }
-        } catch {
-          // Redis unavailable — continue without session validation
         }
+      } catch {
+        // Redis unavailable — continue without session validation
       }
     }
+  }
 
+  if (pathname.startsWith("/api/") && isUnsafeMethod) {
     const tokenFromCookie = request.cookies.get("authToken")?.value || null;
     if (tokenFromCookie) {
       try {
@@ -664,7 +732,7 @@ export async function middleware(request) {
 }
 
 // Exported for unit testing (in-memory fallback behavior)
-export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest };
+export { isAuthRoute, rateLimit, cleanupRateLimitMap, devRateLimitMap, resetForTest, extractClientIp, isValidPublicIp };
 
 // Test helper to control cleanup timer
 function resetForTest(now) {
