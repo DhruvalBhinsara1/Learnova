@@ -82,6 +82,7 @@ import { db } from "@/lib/firebaseConfig";
 import { collection, getDocs, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 
 import AttendanceRiskDashboard from "@/components/dashboard/AttendanceRiskDashboard";
+import ClassroomMoodWidget from "@/components/dashboard/ClassroomMoodWidget";
 import { AttendancePasscodeModal } from "./dashboard/AttendancePasscodeModal";
 import LiveAttendanceView from "@/components/LiveAttendanceView";
 import { ExceptionRequestsList } from "./dashboard/ExceptionRequestsList";
@@ -1232,6 +1233,9 @@ const TeacherDashboard = () => {
         {/* feat: AI-powered attendance risk dashboard (issue #2183) */}
         <div className="bg-card/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl border border-border dark:border-white/10 p-6">
           <AttendanceRiskDashboard />
+          <div className="mt-8">
+            <ClassroomMoodWidget />
+          </div>
         </div>
       </div>
 
