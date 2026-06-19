@@ -3,29 +3,22 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
-  User,
   MessageCircle,
   X,
   Minimize2,
   Maximize2,
-  Moon,
-  Sun,
-  RefreshCw,
   BookOpen,
   Shield,
   BarChart3,
   Zap,
   Clock,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
 import { useAuthContext } from "@/contexts/AuthContext";
 
 export default function ChatBot() {
-  const { theme, setTheme } = useTheme();
-  const { user } = useAuthContext();
   const t = useTranslations("ChatBot");
 
   const [isOpen, setIsOpen] = useState(false);
